@@ -185,7 +185,7 @@ def plot_wfs(uvd, pol):
         
     cbar_ax=fig.add_axes([0.95,0.15,0.02,0.7])        
     fig.colorbar(im, cax=cbar_ax)
-    fig.show()def plot_closure(files, triad_length, pol):
+    fig.show()
 
 
 def plot_closure(files, triad_length, pol):
