@@ -242,7 +242,7 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
     return data
 
 
-def plotCorrMatrix(uv,data,pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto'):
+def plotCorrMatrix(uv,data,pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logScale=False):
     jd = uv.time_array[0]
     if nodes=='auto':
         nodes = generate_nodeDict(uv)
