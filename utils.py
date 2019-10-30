@@ -10,25 +10,36 @@ import sys
 import glob
 import uvtools as uvt
 from astropy.time import Time
+from astropy.coordinates import EarthLocation, SkyCoord, AltAz, Angle
 import pandas
 import warnings 
 import copy
 import utils
+from hera_mc import cm_hookup
 warnings.filterwarnings('ignore')
 
 def load_data(data_path):
-    HHfiles = sorted(glob.glob("{0}/zen.*.*.uvh5".format(data_path)))
-    #difffiles = sorted(glob.glob("{0}/zen.*.*.HH.*.uvh5".format(data_path)))
+    HHfiles = sorted(glob.glob("{0}/zen.*.*.HH.uvh5".format(data_path)))
+    difffiles = sorted(glob.glob("{0}/zen.*.*.HH.diff.uvh5".format(data_path)))
     Nfiles = len(HHfiles)
     hhfile_bases = map(os.path.basename, HHfiles)
-    #hhdifffile_bases = map(os.path.basename, difffiles)
+    hhdifffile_bases = map(os.path.basename, difffiles)
 
     # choose one for single-file plots
     file_index = np.min([len(HHfiles)-1, 20])
     hhfile1 = HHfiles[len(HHfiles)//2]
-    #difffile = difffiles[file_index]
+    difffile1 = difffiles[len(difffiles)//2]
+    if len(HHfiles) != len(difffiles):
+        print('############################################################')
+        print('############### SUM AND DIFF FILE MISMATCH #################')
+        print('############################################################')
     # Load data
     uvd_hh = UVData()
+    uvd_diff = UVData()
+    uvd_sum = UVData()
+    
+    uvd_diff.read_uvh5(difffile1)
+    uvd_sum.read(hhfile1)
 
     uvd_hh.read_uvh5(hhfile1)
     uvd_xx1 = uvd_hh.select(polarizations = -5, inplace = False)
@@ -50,7 +61,7 @@ def load_data(data_path):
     uvdlast = UVData()
     uvdlast.read_uvh5(HHfiles[-1], polarizations=[-5, -6])
    
-    return HHfiles, uvd_xx1, uvd_yy1, uvdfirst, uvdlast
+    return HHfiles, uvd_xx1, uvd_yy1, uvdfirst, uvdlast, uvd_diff, uvd_sum
 
 
 def plot_autos(uvdx, uvdy, uvd1, uvd2):
@@ -186,3 +197,114 @@ def plot_wfs(uvd, pol):
     cbar_ax=fig.add_axes([0.95,0.15,0.02,0.7])        
     fig.colorbar(im, cax=cbar_ax)
     fig.show()
+
+
+def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='amplitude'):
+    if not freq == 'avg':
+        freqs = uv.freq_array[0]
+        freqind = (np.abs(freqs - freq*1000000)).argmin()
+    if nodes=='auto':
+        nodes = generate_nodeDict(sm)
+    nants = len(sm.antenna_numbers)
+    data = {}
+    antnumsAll = []
+    for node in nodes:
+        for ant in nodes[node]:
+            antnumsAll.append(ant)
+    for p in range(len(pols)):
+        pol = pols[p]
+        data[pol] = np.empty((nants,nants))
+        for i in range(len(antnumsAll)):
+            for j in range(len(antnumsAll)):
+                ant1 = antnumsAll[i]
+                ant2 = antnumsAll[j]
+                if freq=='avg':
+                    s = sm.get_data(ant1,ant2,pol)
+                    d = df.get_data(ant1,ant2,pol)
+                else:
+                    s = sm.get_data(ant1,ant2,pol)[:,freqind]
+                    d = df.get_data(ant1,ant2,pol)[:,freqind]
+                even = (s + d)/2
+                even = np.divide(even,np.abs(even))
+                odd = (s - d)/2
+                odd = np.divide(odd,np.abs(odd))
+                product = np.multiply(even,np.conj(odd))
+                if metric=='amplitude':
+                    data[pol][i,j] = np.abs(np.average(product))
+                elif metric=='phase':
+                    product = np.average(product)
+                    re = np.real(product)
+                    imag = np.imag(product)
+                    phase = np.arctan(np.divide(imag,re))
+                    data[pol][i,j] = phase
+                else:
+                    print('Invalid metric')
+    return data
+
+
+def plotCorrMatrix(uv,data,pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto'):
+    jd = uv.time_array[0]
+    if nodes=='auto':
+        nodes = generate_nodeDict(uv)
+    nantsTotal = len(uv.antenna_numbers)
+    power = np.empty((nantsTotal,nantsTotal))
+    fig, axs = plt.subplots(1,len(pols),figsize=(16,16))
+    dirs = ['NS','EW']
+    loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
+    t = Time(uv.time_array[0],format='jd',location=loc)
+    t.format='fits'
+    antnumsAll = []
+    for node in nodes:
+        for ant in nodes[node]:
+            antnumsAll.append(ant)
+    for p in range(len(pols)):
+        pol = pols[p]
+        nants = len(antnumsAll)
+        if logScale is True:
+            im = axs[p].imshow(
+                data[pol],cmap='plasma',origin='upper',extent=[0.5,nantsTotal+.5,0.5,nantsTotal+0.5],
+                norm=LogNorm(vmin=vminIn, vmax=vmaxIn))
+        else:
+            im = axs[p].imshow(
+                data[pol],cmap='plasma',origin='upper',extent=[0.5,nantsTotal+.5,0.5,nantsTotal+0.5],
+                vmin=vminIn, vmax=vmaxIn)
+        axs[p].set_xticks(np.arange(0,nantsTotal)+1)
+        axs[p].set_xticklabels(antnumsAll,rotation=90)
+        axs[p].xaxis.set_ticks_position('top')
+        axs[p].set_title('polarization: ' + dirs[p] + '\n')
+        n=0
+        for node in nodes:
+            n += len(nodes[node])
+            axs[p].axhline(len(antnumsAll)-n+.5,lw=4)
+            axs[p].axvline(n+.5,lw=4)
+            axs[p].text(n-len(nodes[node])/2,-.4,node)
+        axs[p].text(.42,-.07,'Node Number',transform=axs[p].transAxes)
+    n=0
+    for node in nodes:
+        n += len(nodes[node])
+        axs[1].text(nantsTotal+1,nantsTotal-n+len(nodes[node])/2,node)
+    axs[1].text(1.05,0.4,'Node Number',rotation=270,transform=axs[1].transAxes)
+    axs[1].set_yticklabels([])
+    axs[1].set_yticks([])
+    axs[0].set_yticks(np.arange(nantsTotal,0,-1))
+    axs[0].set_yticklabels(antnumsAll)
+    axs[0].set_ylabel('Antenna Number')
+    cbar_ax = fig.add_axes([0.95,0.53,0.02,0.38])
+    cbar_ax.set_xlabel('|V|', rotation=0)
+    cbar = fig.colorbar(im, cax=cbar_ax)
+    fig.suptitle(str(jd) + ' Even*conj(Odd) Normalized Visibility Amplitude')
+    fig.subplots_adjust(top=1.32,wspace=0.05)
+    
+def generate_nodeDict(uv):
+    antnums = uv.antenna_numbers
+    h = cm_hookup.Hookup()
+    x = h.get_hookup('HH')
+    nodes = {}
+    for ant in antnums:
+        key = 'HH%i:A' % (ant)
+        n = x[key].get_part_in_hookup_from_type('node')['E<ground'][2]
+        if n in nodes:
+            nodes[n].append(ant)
+        else:
+            nodes[n] = [ant]
+    return nodes
