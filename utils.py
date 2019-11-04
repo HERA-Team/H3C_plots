@@ -118,28 +118,6 @@ def plot_autos(uvdx, uvdy, uvd1, uvd2):
                 ax.set_xlabel('freq (MHz)', fontsize=10)
             k += 1
     fig.show()
-    
-
-def make_wfs(files, antennas, uvd_old, poli=0):
-    _oldd = {}
-    _d = {}
-    for ant in antennas:
-        auto_bl = (ant, ant)
-        _oldd[auto_bl] = uvd_old.get_data(auto_bl)   
-    for i, fl in enumerate(files):
-        uvd_new = UVData()
-        uvd_new.read_uvh5(fl, polarizations=[-5, -6])
-        antennas = uvd_new.get_ants()
-        for ant in antennas: 
-            auto_bl = (ant, ant)
-            if i==0:
-                d_old = _oldd[auto_bl]
-            else:
-                d_old = _d[auto_bl] 
-            d_new = uvd_new.get_data(auto_bl)
-            _d[auto_bl] = np.concatenate((d_old, d_new), axis=0) 
-
-    return _d 
 
     
 def plot_wfs(uvd, pol):
@@ -308,3 +286,64 @@ def generate_nodeDict(uv):
         else:
             nodes[n] = [ant]
     return nodes
+
+
+def plot_closure(uvd, triad_length, pol):
+    """Plot closure phase for an example triad.
+    Parameters
+    ----------
+    files : list of strings
+        List of data filenames
+    triad_length : float {14., 29.}
+        Length of the triangle segment length. Must be 14 or 29.
+    pol : str {xx, yy}
+        Polarization to plot.
+    Returns
+    -------
+    None
+    """
+
+
+    if triad_length == 14.:
+        triad_list = [[0, 11, 12], [0, 1, 12], [1, 12, 13], [1, 2, 13],
+                      [2, 13, 14], [11, 23, 24], [11, 12, 24], [12, 24, 25],
+                      [12, 13, 25], [13, 25, 26], [13, 14, 26], [14, 26, 27],
+                      [23, 36, 37], [23, 24, 37], [24, 37, 38], [24, 25, 38],
+                      [25, 38, 39], [25, 26, 39], [26, 39, 40], [26, 27, 40],
+                      [27, 40, 41], [36, 37, 51], [37, 51, 52], [37, 38, 52],
+                      [38, 52, 53], [38, 39, 53], [39, 53, 54], [39, 40, 54],
+                      [40, 54, 55], [40, 41, 55], [51, 66, 67], [51, 52, 67],
+                      [53, 54, 69], [54, 69, 70], [54, 55, 70], [55, 70, 71],
+                      [65, 66, 82], [66, 82, 83], [66, 67, 83], [67, 83, 84],
+                      [70, 71, 87], [120, 121, 140], [121, 140, 141], [121, 122, 141],
+                      [122, 141, 142], [122, 123, 142], [123, 142, 143], [123, 124, 143]]
+    else:
+        triad_list = [[0, 23, 25], [0, 2, 25], [1, 24, 26], [2, 25, 27], [11, 36, 38],
+                      [11, 13, 38], [12, 37, 39], [12, 14, 39], [13, 38, 40], [14, 39, 41],
+                      [23, 25, 52], [24, 51, 53], [24, 26, 53], [25, 52, 54], [25, 27, 54],
+                      [26, 53, 55], [36, 65, 67], [36, 38, 67], [38, 67, 69], [38, 40, 69],
+                      [39, 41, 70], [40, 69, 71], [51, 82, 84], [51, 53, 84], [52, 83, 85],
+                      [52, 54, 85], [54, 85, 87], [83, 85, 120], [85, 120, 122], [85, 87, 122],
+                      [87, 122, 124]]
+
+
+    # Look for a triad that exists in the data
+    for triad in triad_list:
+        bls = [[triad[0], triad[1]], [triad[1], triad[2]], [triad[2], triad[0]]]
+        triad_in = True
+        for bl in bls:
+            inds = uvd.antpair2ind(bl[0], bl[1], ordered=False)
+            if len(inds) == 0:
+                triad_in = False
+                break
+        if triad_in:
+            break
+
+    if not triad_in:
+        raise ValueError('Could not find triad in data.')
+
+    closure_ph = np.angle(uvd.get_data(triad[0], triad[1], pol)
+                          * uvd.get_data(triad[1], triad[2], pol)
+                          * uvd.get_data(triad[2], triad[0], pol))
+    plt.imshow(closure_ph, aspect='auto', rasterized=True,
+                           interpolation='nearest', cmap = 'twilight')
