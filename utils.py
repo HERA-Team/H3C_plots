@@ -177,17 +177,24 @@ def plot_wfs(uvd, pol):
     fig.show()
 
 
-def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='amplitude'):
-    if not freq == 'avg':
-        freqs = uv.freq_array[0]
-        freqind = (np.abs(freqs - freq*1000000)).argmin()
+def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='amplitude',flagging=False):
+    if sm.time_array[0] != df.time_array[0]:
+        print('FATAL ERROR: Sum and diff files are not from the same observation!')
+        return None
     if nodes=='auto':
-        nodes = generate_nodeDict(sm)
+        nodeDict = generate_nodeDict(sm)
     nants = len(sm.antenna_numbers)
     data = {}
     antnumsAll = []
-    for node in nodes:
-        for ant in nodes[node]:
+    for node in nodeDict:
+        snapLocs = []
+        nodeAnts = []
+        for ant in nodeDict[node]['ants']:
+            nodeAnts.append(ant)
+        for snapLoc in nodeDict[node]['snapLocs']:
+            snapLocs.append(snapLoc)
+        snapSorted = [x for _,x in sorted(zip(snapLocs,nodeAnts))]
+        for ant in snapSorted:
             antnumsAll.append(ant)
     for p in range(len(pols)):
         pol = pols[p]
@@ -199,9 +206,27 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
                 if freq=='avg':
                     s = sm.get_data(ant1,ant2,pol)
                     d = df.get_data(ant1,ant2,pol)
-                else:
+                    sflg = np.invert(sm.get_flags(ant1,ant2,pol))
+                    dflg = np.invert(df.get_flags(ant1,ant2,pol))
+                elif len(freq)==1:
+                    freqs = sm.freq_array[0]
+                    freqind = (np.abs(freqs - freq*1000000)).argmin()
                     s = sm.get_data(ant1,ant2,pol)[:,freqind]
                     d = df.get_data(ant1,ant2,pol)[:,freqind]
+                    sflg = np.invert(sm.get_flags(ant1,ant2,pol)[:,freqind])
+                    dflg = np.invert(df.get_flags(ant1,ant2,pol)[:,freqind])
+                else:
+                    freqs = sm.freq_array[0]
+                    freqindHigh = (np.abs(freqs - freq[-1]*1000000)).argmin()
+                    freqindLow = (np.abs(freqs - freq[0]*1000000)).argmin()
+                    s = sm.get_data(ant1,ant2,pol)[:,freqindLow:freqindHigh]
+                    d = df.get_data(ant1,ant2,pol)[:,freqindLow:freqindHigh]
+                    sflg = np.invert(sm.get_flags(ant1,ant2,pol)[:,freqindLow:freqindHigh])
+                    dflg = np.invert(df.get_flags(ant1,ant2,pol)[:,freqindLow:freqindHigh])
+                if flagging is True:
+                    flags = np.logical_and(sflg,dflg)
+                    s = s[flags]
+                    d = d[flags]
                 even = (s + d)/2
                 even = np.divide(even,np.abs(even))
                 odd = (s - d)/2
@@ -220,10 +245,9 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
     return data
 
 
-def plotCorrMatrix(uv,data,pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logScale=False):
-    jd = uv.time_array[0]
+def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logScale=False):
     if nodes=='auto':
-        nodes = generate_nodeDict(uv)
+        nodeDict = generate_nodeDict(uv)
     nantsTotal = len(uv.antenna_numbers)
     power = np.empty((nantsTotal,nantsTotal))
     fig, axs = plt.subplots(1,len(pols),figsize=(16,16))
@@ -231,36 +255,40 @@ def plotCorrMatrix(uv,data,pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logSc
     loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
     t = Time(uv.time_array[0],format='jd',location=loc)
     t.format='fits'
+    jd = int(uv.time_array[0])
     antnumsAll = []
-    for node in nodes:
-        for ant in nodes[node]:
+    for node in nodeDict:
+        snapLocs = []
+        nodeAnts = []
+        for ant in nodeDict[node]['ants']:
+            nodeAnts.append(ant)
+        for snapLoc in nodeDict[node]['snapLocs']:
+            snapLocs.append(snapLoc)
+        snapSorted = [x for _,x in sorted(zip(snapLocs,nodeAnts))]
+        for ant in snapSorted:
             antnumsAll.append(ant)
     for p in range(len(pols)):
         pol = pols[p]
         nants = len(antnumsAll)
         if logScale is True:
-            im = axs[p].imshow(
-                data[pol],cmap='plasma',origin='upper',extent=[0.5,nantsTotal+.5,0.5,nantsTotal+0.5],
-                norm=LogNorm(vmin=vminIn, vmax=vmaxIn))
+            im = axs[p].imshow(data[pol],cmap='plasma',origin='upper',extent=[0.5,nantsTotal+.5,0.5,nantsTotal+0.5],norm=LogNorm(vmin=vminIn, vmax=vmaxIn))
         else:
-            im = axs[p].imshow(
-                data[pol],cmap='plasma',origin='upper',extent=[0.5,nantsTotal+.5,0.5,nantsTotal+0.5],
-                vmin=vminIn, vmax=vmaxIn)
+            im = axs[p].imshow(data[pol],cmap='plasma',origin='upper',extent=[0.5,nantsTotal+.5,0.5,nantsTotal+0.5],vmin=vminIn, vmax=vmaxIn)
         axs[p].set_xticks(np.arange(0,nantsTotal)+1)
         axs[p].set_xticklabels(antnumsAll,rotation=90)
         axs[p].xaxis.set_ticks_position('top')
         axs[p].set_title('polarization: ' + dirs[p] + '\n')
         n=0
-        for node in nodes:
-            n += len(nodes[node])
+        for node in nodeDict:
+            n += len(nodeDict[node]['ants'])
             axs[p].axhline(len(antnumsAll)-n+.5,lw=4)
             axs[p].axvline(n+.5,lw=4)
-            axs[p].text(n-len(nodes[node])/2,-.4,node)
+            axs[p].text(n-len(nodeDict[node]['ants'])/2,-.4,node)
         axs[p].text(.42,-.07,'Node Number',transform=axs[p].transAxes)
     n=0
-    for node in nodes:
-        n += len(nodes[node])
-        axs[1].text(nantsTotal+1,nantsTotal-n+len(nodes[node])/2,node)
+    for node in nodeDict:
+        n += len(nodeDict[node]['ants'])
+        axs[1].text(nantsTotal+1,nantsTotal-n+len(nodeDict[node]['ants'])/2,node)
     axs[1].text(1.05,0.4,'Node Number',rotation=270,transform=axs[1].transAxes)
     axs[1].set_yticklabels([])
     axs[1].set_yticks([])
@@ -270,6 +298,7 @@ def plotCorrMatrix(uv,data,pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logSc
     cbar_ax = fig.add_axes([0.95,0.53,0.02,0.38])
     cbar_ax.set_xlabel('|V|', rotation=0)
     cbar = fig.colorbar(im, cax=cbar_ax)
+    #fig.suptitle('JD: ' + str(jd) + ', Frequency Range: ' + '%i-%iMHz' % (freq[0],freq[1]))
     fig.suptitle(str(jd) + ' Even*conj(Odd) Normalized Visibility Amplitude')
     fig.subplots_adjust(top=1.32,wspace=0.05)
     
@@ -281,10 +310,14 @@ def generate_nodeDict(uv):
     for ant in antnums:
         key = 'HH%i:A' % (ant)
         n = x[key].get_part_in_hookup_from_type('node')['E<ground'][2]
+        snapLoc = x[key].hookup['E<ground'][-1].downstream_input_port[-1]
         if n in nodes:
-            nodes[n].append(ant)
+            nodes[n]['ants'].append(ant)
+            nodes[n]['snapLocs'].append(snapLoc)
         else:
-            nodes[n] = [ant]
+            nodes[n] = {}
+            nodes[n]['ants'] = [ant]
+            nodes[n]['snapLocs'] = [snapLoc]
     return nodes
 
 
