@@ -181,8 +181,6 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
     if sm.time_array[0] != df.time_array[0]:
         print('FATAL ERROR: Sum and diff files are not from the same observation!')
         return None
-    else:
-        print('Sum and Diff times match')
     if nodes=='auto':
         nodeDict = generate_nodeDict(sm)
     nants = len(sm.antenna_numbers)
