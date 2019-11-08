@@ -182,20 +182,10 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
         print('FATAL ERROR: Sum and diff files are not from the same observation!')
         return None
     if nodes=='auto':
-        nodeDict = generate_nodeDict(sm)
+        nodeDict, antDict, inclNodes = generate_nodeDict(sm)
     nants = len(sm.antenna_numbers)
     data = {}
-    antnumsAll = []
-    for node in nodeDict:
-        snapLocs = []
-        nodeAnts = []
-        for ant in nodeDict[node]['ants']:
-            nodeAnts.append(ant)
-        for snapLoc in nodeDict[node]['snapLocs']:
-            snapLocs.append(snapLoc)
-        snapSorted = [x for _,x in sorted(zip(snapLocs,nodeAnts))]
-        for ant in snapSorted:
-            antnumsAll.append(ant)
+    antnumsAll = sort_antennas(sm)
     for p in range(len(pols)):
         pol = pols[p]
         data[pol] = np.empty((nants,nants))
@@ -247,7 +237,7 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
 
 def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logScale=False):
     if nodes=='auto':
-        nodeDict = generate_nodeDict(uv)
+        nodeDict, antDict, inclNodes = generate_nodeDict(uv)
     nantsTotal = len(uv.antenna_numbers)
     power = np.empty((nantsTotal,nantsTotal))
     fig, axs = plt.subplots(1,len(pols),figsize=(16,16))
@@ -256,17 +246,7 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
     t = Time(uv.time_array[0],format='jd',location=loc)
     t.format='fits'
     jd = int(uv.time_array[0])
-    antnumsAll = []
-    for node in nodeDict:
-        snapLocs = []
-        nodeAnts = []
-        for ant in nodeDict[node]['ants']:
-            nodeAnts.append(ant)
-        for snapLoc in nodeDict[node]['snapLocs']:
-            snapLocs.append(snapLoc)
-        snapSorted = [x for _,x in sorted(zip(snapLocs,nodeAnts))]
-        for ant in snapSorted:
-            antnumsAll.append(ant)
+    antnumsAll = sort_antennas(uv)
     for p in range(len(pols)):
         pol = pols[p]
         nants = len(antnumsAll)
@@ -307,18 +287,63 @@ def generate_nodeDict(uv):
     h = cm_hookup.Hookup()
     x = h.get_hookup('HH')
     nodes = {}
+    antDict = {}
+    inclNodes = []
     for ant in antnums:
         key = 'HH%i:A' % (ant)
         n = x[key].get_part_in_hookup_from_type('node')['E<ground'][2]
-        snapLoc = x[key].hookup['E<ground'][-1].downstream_input_port[-1]
+        snapLoc = (x[key].hookup['E<ground'][-1].downstream_input_port[-1], ant)
+        snapInput = (x[key].hookup['E<ground'][-2].downstream_input_port[1:], ant)
+        antDict[ant] = {}
+        antDict[ant]['node'] = str(n)
+        antDict[ant]['snapLocs'] = snapLoc
+        antDict[ant]['snapInput'] = snapInput
+        inclNodes.append(n)
         if n in nodes:
             nodes[n]['ants'].append(ant)
             nodes[n]['snapLocs'].append(snapLoc)
+            nodes[n]['snapInput'].append(snapInput)
         else:
             nodes[n] = {}
             nodes[n]['ants'] = [ant]
             nodes[n]['snapLocs'] = [snapLoc]
-    return nodes
+            nodes[n]['snapInput'] = [snapInput]
+    inclNodes = np.unique(inclNodes)
+    return nodes, antDict, inclNodes
+
+def sort_antennas(uv):
+    nodes, antDict, inclNodes = generate_nodeDict(uv)
+    sortedAntennas = []
+    for n in sorted(inclNodes):
+        snappairs = []
+        h = cm_hookup.Hookup()
+        x = h.get_hookup('HH')
+        for ant in nodes[n]['ants']:
+            snappairs.append(antDict[ant]['snapLocs'])
+        snapLocs = {}
+        locs = []
+        for pair in snappairs:
+            ant = pair[1]
+            loc = pair[0]
+            locs.append(loc)
+            if loc in snapLocs:
+                snapLocs[loc].append(ant)
+            else:
+                snapLocs[loc] = [ant]
+        locs = sorted(np.unique(locs))
+        ants_sorted = []
+        for loc in locs:
+            ants = snapLocs[loc]
+            inputpairs = []
+            for ant in ants:
+                key = 'HH%i:A' % (ant)
+                pair = (int(x[key].hookup['E<ground'][-2].downstream_input_port[1:]), ant)
+                inputpairs.append(pair)
+            for _,a in sorted(inputpairs):
+                ants_sorted.append(a)
+        for ant in ants_sorted:
+            sortedAntennas.append(ant)
+    return sortedAntennas
 
 
 def plot_closure(uvd, triad_length, pol):
