@@ -406,23 +406,30 @@ def plot_closure(uvd, triad_length, pol):
     plt.imshow(closure_ph, aspect='auto', rasterized=True,
                            interpolation='nearest', cmap = 'twilight')
     
-def plot_antenna_positions(uv):
+def plot_antenna_positions(uv, badAnts=[]):
     plt.figure(figsize=(12,10))
     nodes = generate_nodeDict(uv)
     N = len(nodes)
     colors = ['b','g','y','r','c','m']
     n = 0
+    labelled = []
     for node in nodes:
         color = colors[n]
         n += 1
         ants = nodes[node]['ants']
         for antNum in ants:
+            width = 0
             idx = np.argwhere(uv.antenna_numbers == antNum)[0][0]
             antPos = uv.antenna_positions[idx]
+            if antNum in badAnts:
+                width=5
             if antNum == ants[0]:
-                plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,label=str(node))
+                plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,label=str(node),
+                        markeredgecolor='black',markeredgewidth=width)
+                labelled.append(node)
             else:
-                plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5)
+                plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,
+                        markeredgecolor='black',markeredgewidth=width)
             plt.text(antPos[1]-1.5,antPos[2],str(antNum))
     plt.legend(title='Node Number',bbox_to_anchor=(1.15,0.9),markerscale=0.5,labelspacing=1.5)
     plt.title('Antenna Locations')
