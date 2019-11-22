@@ -422,7 +422,7 @@ def plot_antenna_positions(uv, badAnts=[]):
             idx = np.argwhere(uv.antenna_numbers == antNum)[0][0]
             antPos = uv.antenna_positions[idx]
             if antNum in badAnts:
-                edge=5
+                width=5
             if antNum == ants[0]:
                 plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,label=str(node),
                         markeredgecolor='black',markeredgewidth=width)
