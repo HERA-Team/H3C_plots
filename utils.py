@@ -31,15 +31,10 @@ def load_data(data_path):
     difffile1 = difffiles[len(difffiles)//2]
     if len(HHfiles) != len(difffiles):
         print('############################################################')
-        print('############### SUM AND DIFF FILE MISMATCH #################')
+        print('######### DIFFERENT NUMBER OF SUM AND DIFF FILES ###########')
         print('############################################################')
     # Load data
     uvd_hh = UVData()
-    uvd_diff = UVData()
-    uvd_sum = UVData()
-    
-    uvd_diff.read_uvh5(difffile1)
-    uvd_sum.read(hhfile1)
 
     uvd_hh.read_uvh5(hhfile1)
     uvd_xx1 = uvd_hh.select(polarizations = -5, inplace = False)
@@ -61,8 +56,27 @@ def load_data(data_path):
     uvdlast = UVData()
     uvdlast.read_uvh5(HHfiles[-1], polarizations=[-5, -6])
    
-    return HHfiles, uvd_xx1, uvd_yy1, uvdfirst, uvdlast, uvd_diff, uvd_sum
+    return HHfiles, difffiles, uvd_xx1, uvd_yy1, uvdfirst, uvdlast
 
+
+def load_sum_and_diff_files(HHfiles, difffiles):
+    f0 = HHfiles[0]
+    f1 = HHfiles[len(HHfiles)//2]
+    f2 = HHfiles[-1]
+    sm0 = UVData()
+    sm1 = UVData()
+    sm2 = UVData()
+    df1 = UVData()
+    df2 = UVData()
+    df3 = UVData()
+    sm0.read_uvh5(f0)
+    sm1.read_uvh5(f1)
+    sm2.read_uvh5(f2)
+    df0.read_uvh5('%s.diff%s' % (f0[0:-5],f0[-5:]))
+    df1.read_uvh5('%s.diff%s' % (f1[0:-5],f1[-5:]))
+    df2.read_uvh5('%s.diff%s' % (f2[0:-5],f2[-5:]))
+    return sm0,sm1,sm2,df0,df1,df2
+    
 
 def plot_autos(uvdx, uvdy, uvd1, uvd2):
     ants = uvdx.get_ants()
