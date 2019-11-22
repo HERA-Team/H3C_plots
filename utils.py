@@ -60,9 +60,9 @@ def load_data(data_path):
 
 
 def load_sum_and_diff_files(HHfiles, difffiles):
-    f0 = HHfiles[0]
+    f0 = HHfiles[len(HHfiles)//4]
     f1 = HHfiles[len(HHfiles)//2]
-    f2 = HHfiles[-1]
+    f2 = HHfiles[-len(HHfiles)//4]
     sm0 = UVData()
     sm1 = UVData()
     sm2 = UVData()
