@@ -66,9 +66,9 @@ def load_sum_and_diff_files(HHfiles, difffiles):
     sm0 = UVData()
     sm1 = UVData()
     sm2 = UVData()
+    df0 = UVData()
     df1 = UVData()
     df2 = UVData()
-    df3 = UVData()
     sm0.read_uvh5(f0)
     sm1.read_uvh5(f1)
     sm2.read_uvh5(f2)
@@ -259,7 +259,7 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
     loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
     t = Time(uv.time_array[0],format='jd',location=loc)
     t.format='fits'
-    jd = int(uv.time_array[0])
+    jd = uv.time_array[0]
     antnumsAll = sort_antennas(uv)
     for p in range(len(pols)):
         pol = pols[p]
