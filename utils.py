@@ -31,15 +31,10 @@ def load_data(data_path):
     difffile1 = difffiles[len(difffiles)//2]
     if len(HHfiles) != len(difffiles):
         print('############################################################')
-        print('############### SUM AND DIFF FILE MISMATCH #################')
+        print('######### DIFFERENT NUMBER OF SUM AND DIFF FILES ###########')
         print('############################################################')
     # Load data
     uvd_hh = UVData()
-    uvd_diff = UVData()
-    uvd_sum = UVData()
-    
-    uvd_diff.read_uvh5(difffile1)
-    uvd_sum.read(hhfile1)
 
     uvd_hh.read_uvh5(hhfile1)
     uvd_xx1 = uvd_hh.select(polarizations = -5, inplace = False)
@@ -61,8 +56,27 @@ def load_data(data_path):
     uvdlast = UVData()
     uvdlast.read_uvh5(HHfiles[-1], polarizations=[-5, -6])
    
-    return HHfiles, uvd_xx1, uvd_yy1, uvdfirst, uvdlast, uvd_diff, uvd_sum
+    return HHfiles, difffiles, uvd_xx1, uvd_yy1, uvdfirst, uvdlast
 
+
+def load_sum_and_diff_files(HHfiles, difffiles):
+    f0 = HHfiles[len(HHfiles)//4]
+    f1 = HHfiles[len(HHfiles)//2]
+    f2 = HHfiles[-len(HHfiles)//4]
+    sm0 = UVData()
+    sm1 = UVData()
+    sm2 = UVData()
+    df0 = UVData()
+    df1 = UVData()
+    df2 = UVData()
+    sm0.read_uvh5(f0)
+    sm1.read_uvh5(f1)
+    sm2.read_uvh5(f2)
+    df0.read_uvh5('%s.diff%s' % (f0[0:-5],f0[-5:]))
+    df1.read_uvh5('%s.diff%s' % (f1[0:-5],f1[-5:]))
+    df2.read_uvh5('%s.diff%s' % (f2[0:-5],f2[-5:]))
+    return sm0,sm1,sm2,df0,df1,df2
+    
 
 def plot_autos(uvdx, uvdy, uvd1, uvd2):
     ants = uvdx.get_ants()
@@ -244,8 +258,9 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
     dirs = ['NS','EW']
     loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
     t = Time(uv.time_array[0],format='jd',location=loc)
+    lst = round(t.sidereal_time('mean').hour,2)
     t.format='fits'
-    jd = int(uv.time_array[0])
+    jd = uv.time_array[0]
     antnumsAll = sort_antennas(uv)
     for p in range(len(pols)):
         pol = pols[p]
@@ -275,11 +290,12 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
     axs[0].set_yticks(np.arange(nantsTotal,0,-1))
     axs[0].set_yticklabels(antnumsAll)
     axs[0].set_ylabel('Antenna Number')
+    #axs[1].text(nantsTotal-8,nantsTotal+3,'LST: %f' % lst,fontsize=12)
     cbar_ax = fig.add_axes([0.95,0.53,0.02,0.38])
     cbar_ax.set_xlabel('|V|', rotation=0)
     cbar = fig.colorbar(im, cax=cbar_ax)
     #fig.suptitle('JD: ' + str(jd) + ', Frequency Range: ' + '%i-%iMHz' % (freq[0],freq[1]))
-    fig.suptitle(str(jd) + ' Even*conj(Odd) Normalized Visibility Amplitude')
+    fig.suptitle('Correlation Matrix - JD: %s, LST: %.0fh' % (str(jd),np.round(lst,0)))
     fig.subplots_adjust(top=1.32,wspace=0.05)
     
 def generate_nodeDict(uv):
@@ -408,7 +424,7 @@ def plot_closure(uvd, triad_length, pol):
     
 def plot_antenna_positions(uv, badAnts=[]):
     plt.figure(figsize=(12,10))
-    nodes = generate_nodeDict(uv)
+    nodes, antDict, inclNodes = generate_nodeDict(uv)
     N = len(nodes)
     colors = ['b','g','y','r','c','m']
     n = 0
@@ -433,4 +449,22 @@ def plot_antenna_positions(uv, badAnts=[]):
             plt.text(antPos[1]-1.5,antPos[2],str(antNum))
     plt.legend(title='Node Number',bbox_to_anchor=(1.15,0.9),markerscale=0.5,labelspacing=1.5)
     plt.title('Antenna Locations')
+    
+def get_hourly_files(uv, HHfiles):
+    use_lsts = []
+    use_files = []
+    for file in HHfiles:
+        jd = float(file[-21:-8])
+        loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
+        t = Time(jd,format='jd',location=loc)
+        lst = round(t.sidereal_time('mean').hour,2)
+        if np.abs((lst-np.round(lst,0)))<0.05:
+            if len(use_lsts)>0 and np.abs(use_lsts[-1]-lst)<0.5:
+                if np.abs((lst-np.round(lst,0))) < abs((use_lsts[-1]-np.round(lst,0))):
+                    use_lsts[-1] = lst
+                    use_files[-1] = file
+            else:
+                use_lsts.append(lst)
+                use_files.append(file)
+    return use_files, use_lsts
             
