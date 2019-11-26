@@ -448,4 +448,57 @@ def get_hourly_files(uv, HHfiles):
                 use_lsts.append(lst)
                 use_files.append(file)
     return use_files, use_lsts
+
+def plotVisibilitySpectra(uv,badAnts=[],length=29,pols=['xx','yy'], clipLowAnts=True):
+    fig,axs = plt.subplots(2,1,figsize=(12,12))
+    h = cm_hookup.Hookup()
+    x = h.get_hookup('HH')
+    baseline_groups,vec_bin_centers,lengths = uv.get_redundancies(use_antpos=True,include_autos=False)
+    freqs = uv.freq_array[0]/1000000
+    loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
+    obstime_start = Time(uv.time_array[0],format='jd',location=loc)
+    startTime = obstime_start.sidereal_time('mean').hour
+    JD = int(obstime_start.jd)
+    for i in range(len(baseline_groups)):
+        bl = baseline_groups[i]
+        if np.abs(lengths[i]-length)<1 and len(bl)>15:
+            bls = bl
+    for p in range(len(pols)):
+        inter=False
+        intra=False
+        pol = pols[p]
+        for i in range(len(bls)):
+            ants = uv.baseline_to_antnums(bls[i])
+            ant1 = ants[0]
+            ant2 = ants[1]
+            key1 = 'HH%i:A' % (ant1)
+            n1 = x[key1].get_part_in_hookup_from_type('node')['E<ground'][2]
+            key2 = 'HH%i:A' % (ant2)
+            n2 = x[key2].get_part_in_hookup_from_type('node')['E<ground'][2]
+            dat = np.mean(np.abs(uv.get_data(ant1,ant2,pol)),0)
+            auto1 = np.mean(np.abs(uv.get_data(ant1,ant1,pol)),0)
+            auto2 = np.mean(np.abs(uv.get_data(ant2,ant2,pol)),0)
+            norm = np.sqrt(np.multiply(auto1,auto2))
+            dat = np.divide(dat,norm)
+            if ant1 in badAnts or ant2 in badAnts:
+                continue
+            if n1 == n2:
+                if intra is False:
+                    axs[p].plot(freqs,dat,color='blue',label='intranode')
+                    intra=True
+                else:
+                    axs[p].plot(freqs,dat,color='blue')
+            else:
+                if inter is False:
+                    axs[p].plot(freqs,dat,color='red',label='internode')
+                    inter=True
+                else:
+                    axs[p].plot(freqs,dat,color='red')
+            axs[p].set_title(pol)    
+            axs[p].set_yscale('log')
+        axs[p].legend(loc='upper right')
+        axs[p].set_xlabel('Frequency (MHz)')
+        axs[p].set_ylabel('log(|Vij|)')
+        fig.suptitle('Visibility spectra for %im E-W baselines (JD: %i)' % (length,JD))
+        fig.subplots_adjust(top=.94,wspace=0.05)
             
