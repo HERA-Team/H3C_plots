@@ -57,25 +57,6 @@ def load_data(data_path):
     uvdlast.read_uvh5(HHfiles[-1], polarizations=[-5, -6])
    
     return HHfiles, difffiles, uvd_xx1, uvd_yy1, uvdfirst, uvdlast
-
-
-def load_sum_and_diff_files(HHfiles, difffiles):
-    f0 = HHfiles[len(HHfiles)//4]
-    f1 = HHfiles[len(HHfiles)//2]
-    f2 = HHfiles[-len(HHfiles)//4]
-    sm0 = UVData()
-    sm1 = UVData()
-    sm2 = UVData()
-    df0 = UVData()
-    df1 = UVData()
-    df2 = UVData()
-    sm0.read_uvh5(f0)
-    sm1.read_uvh5(f1)
-    sm2.read_uvh5(f2)
-    df0.read_uvh5('%s.diff%s' % (f0[0:-5],f0[-5:]))
-    df1.read_uvh5('%s.diff%s' % (f1[0:-5],f1[-5:]))
-    df2.read_uvh5('%s.diff%s' % (f2[0:-5],f2[-5:]))
-    return sm0,sm1,sm2,df0,df1,df2
     
 
 def plot_autos(uvdx, uvdy, uvd1, uvd2):
