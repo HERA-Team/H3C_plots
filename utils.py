@@ -258,6 +258,7 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
     dirs = ['NS','EW']
     loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
     t = Time(uv.time_array[0],format='jd',location=loc)
+    lst = round(t.sidereal_time('mean').hour,2)
     t.format='fits'
     jd = uv.time_array[0]
     antnumsAll = sort_antennas(uv)
@@ -289,11 +290,12 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
     axs[0].set_yticks(np.arange(nantsTotal,0,-1))
     axs[0].set_yticklabels(antnumsAll)
     axs[0].set_ylabel('Antenna Number')
+    #axs[1].text(nantsTotal-8,nantsTotal+3,'LST: %f' % lst,fontsize=12)
     cbar_ax = fig.add_axes([0.95,0.53,0.02,0.38])
     cbar_ax.set_xlabel('|V|', rotation=0)
     cbar = fig.colorbar(im, cax=cbar_ax)
     #fig.suptitle('JD: ' + str(jd) + ', Frequency Range: ' + '%i-%iMHz' % (freq[0],freq[1]))
-    fig.suptitle(str(jd) + ' Even*conj(Odd) Normalized Visibility Amplitude')
+    fig.suptitle('Correlation Matrix - JD: %s, LST: %.0fh' % (str(jd),np.round(lst,0)))
     fig.subplots_adjust(top=1.32,wspace=0.05)
     
 def generate_nodeDict(uv):
@@ -422,7 +424,7 @@ def plot_closure(uvd, triad_length, pol):
     
 def plot_antenna_positions(uv, badAnts=[]):
     plt.figure(figsize=(12,10))
-    nodes = generate_nodeDict(uv)
+    nodes, antDict, inclNodes = generate_nodeDict(uv)
     N = len(nodes)
     colors = ['b','g','y','r','c','m']
     n = 0
@@ -447,4 +449,22 @@ def plot_antenna_positions(uv, badAnts=[]):
             plt.text(antPos[1]-1.5,antPos[2],str(antNum))
     plt.legend(title='Node Number',bbox_to_anchor=(1.15,0.9),markerscale=0.5,labelspacing=1.5)
     plt.title('Antenna Locations')
+    
+def get_hourly_files(uv, HHfiles):
+    use_lsts = []
+    use_files = []
+    for file in HHfiles:
+        jd = float(file[-21:-8])
+        loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
+        t = Time(jd,format='jd',location=loc)
+        lst = round(t.sidereal_time('mean').hour,2)
+        if np.abs((lst-np.round(lst,0)))<0.05:
+            if len(use_lsts)>0 and np.abs(use_lsts[-1]-lst)<0.5:
+                if np.abs((lst-np.round(lst,0))) < abs((use_lsts[-1]-np.round(lst,0))):
+                    use_lsts[-1] = lst
+                    use_files[-1] = file
+            else:
+                use_lsts.append(lst)
+                use_files.append(file)
+    return use_files, use_lsts
             
