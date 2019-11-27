@@ -172,7 +172,7 @@ def plot_wfs(uvd, pol):
     fig.show()
 
 
-def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='amplitude',flagging=False):
+def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='amplitude',flagging=False, badThresh=0.5):
     if sm.time_array[0] != df.time_array[0]:
         print('FATAL ERROR: Sum and diff files are not from the same observation!')
         return None
@@ -181,10 +181,12 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
     nants = len(sm.antenna_numbers)
     data = {}
     antnumsAll = sort_antennas(sm)
+    badAnts = []
     for p in range(len(pols)):
         pol = pols[p]
         data[pol] = np.empty((nants,nants))
         for i in range(len(antnumsAll)):
+            thisAnt = []
             for j in range(len(antnumsAll)):
                 ant1 = antnumsAll[i]
                 ant2 = antnumsAll[j]
@@ -219,6 +221,7 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
                 product = np.multiply(even,np.conj(odd))
                 if metric=='amplitude':
                     data[pol][i,j] = np.abs(np.average(product))
+                    thisAnt.append(np.abs(np.average(product)))
                 elif metric=='phase':
                     product = np.average(product)
                     re = np.real(product)
@@ -227,7 +230,9 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
                     data[pol][i,j] = phase
                 else:
                     print('Invalid metric')
-    return data
+            if np.nanmedian(thisAnt) < badThresh and antnumsAll[i] not in badAnts:
+                badAnts.append(antnumsAll[i])
+    return data, badAnts
 
 
 def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logScale=False):
@@ -517,4 +522,18 @@ def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnt
             axs[p].set_ylabel('log(|Vij|)')
             fig.suptitle('Visibility spectra for %s baselines (JD: %i)' % (orientation,JD))
             fig.subplots_adjust(top=.94,wspace=0.05)
-            
+
+def plot_correlation_matrices(uvd1,HHfiles,badThresh=0.35):
+    files, lsts = get_hourly_files(uvd1, HHfiles)
+    bad_antennas = []
+    for file in files:
+        sm = UVData()
+        df = UVData()
+        sm.read_uvh5(file)
+        df.read_uvh5('%s.diff%s' % (file[0:-5],file[-5:]))
+        matrix, badAnts = calcEvenOddAmpMatrix(sm,df,nodes='auto',badThresh=badThresh)
+        for ant in badAnts:
+            if ant not in bad_antennas:
+                bad_antennas.append(ant)
+        plotCorrMatrix(sm, matrix, nodes='auto')
+    return bad_antennas
