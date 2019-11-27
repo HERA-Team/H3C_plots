@@ -57,25 +57,6 @@ def load_data(data_path):
     uvdlast.read_uvh5(HHfiles[-1], polarizations=[-5, -6])
    
     return HHfiles, difffiles, uvd_xx1, uvd_yy1, uvdfirst, uvdlast
-
-
-def load_sum_and_diff_files(HHfiles, difffiles):
-    f0 = HHfiles[len(HHfiles)//4]
-    f1 = HHfiles[len(HHfiles)//2]
-    f2 = HHfiles[-len(HHfiles)//4]
-    sm0 = UVData()
-    sm1 = UVData()
-    sm2 = UVData()
-    df0 = UVData()
-    df1 = UVData()
-    df2 = UVData()
-    sm0.read_uvh5(f0)
-    sm1.read_uvh5(f1)
-    sm2.read_uvh5(f2)
-    df0.read_uvh5('%s.diff%s' % (f0[0:-5],f0[-5:]))
-    df1.read_uvh5('%s.diff%s' % (f1[0:-5],f1[-5:]))
-    df2.read_uvh5('%s.diff%s' % (f2[0:-5],f2[-5:]))
-    return sm0,sm1,sm2,df0,df1,df2
     
 
 def plot_autos(uvdx, uvdy, uvd1, uvd2):
@@ -467,4 +448,73 @@ def get_hourly_files(uv, HHfiles):
                 use_lsts.append(lst)
                 use_files.append(file)
     return use_files, use_lsts
+
+def get_baseline_groups(uv, bl_groups=[(14,0,'14m E-W'),(29,0,'29m E-W'),(14,-11,'14m NW-SE'),(14,11,'14m SW-NE')]):
+    bls={}
+    baseline_groups,vec_bin_centers,lengths = uv.get_redundancies(use_antpos=True,include_autos=False)
+    for i in range(len(baseline_groups)):
+        bl = baseline_groups[i]
+        for group in bl_groups:
+            if np.abs(lengths[i]-group[0])<1:
+                ant1 = uv.baseline_to_antnums(bl[0])[0]
+                ant2 = uv.baseline_to_antnums(bl[0])[1]
+                antPos1 = uv.antenna_positions[np.argwhere(uv.antenna_numbers == ant1)]
+                antPos2 = uv.antenna_positions[np.argwhere(uv.antenna_numbers == ant2)]
+                disp = (antPos2-antPos1)[0][0]
+                if np.abs(disp[2]-group[1])<0.5:
+                    bls[group[2]] = bl
+    return bls
+
+def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnts=True):
+    uv = UVData()
+    uv.read_uvh5(file)
+    h = cm_hookup.Hookup()
+    x = h.get_hookup('HH')
+    baseline_groups = get_baseline_groups(uv)
+    freqs = uv.freq_array[0]/1000000
+    loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
+    obstime_start = Time(uv.time_array[0],format='jd',location=loc)
+    startTime = obstime_start.sidereal_time('mean').hour
+    JD = int(obstime_start.jd)
+    for orientation in baseline_groups:
+        fig,axs = plt.subplots(2,1,figsize=(12,12))
+        bls = baseline_groups[orientation]
+        for p in range(len(pols)):
+            inter=False
+            intra=False
+            pol = pols[p]
+            for i in range(len(bls)):
+                ants = uv.baseline_to_antnums(bls[i])
+                ant1 = ants[0]
+                ant2 = ants[1]
+                key1 = 'HH%i:A' % (ant1)
+                n1 = x[key1].get_part_in_hookup_from_type('node')['E<ground'][2]
+                key2 = 'HH%i:A' % (ant2)
+                n2 = x[key2].get_part_in_hookup_from_type('node')['E<ground'][2]
+                dat = np.mean(np.abs(uv.get_data(ant1,ant2,pol)),0)
+                auto1 = np.mean(np.abs(uv.get_data(ant1,ant1,pol)),0)
+                auto2 = np.mean(np.abs(uv.get_data(ant2,ant2,pol)),0)
+                norm = np.sqrt(np.multiply(auto1,auto2))
+                dat = np.divide(dat,norm)
+                if ant1 in badAnts or ant2 in badAnts:
+                    continue
+                if n1 == n2:
+                    if intra is False:
+                        axs[p].plot(freqs,dat,color='blue',label='intranode')
+                        intra=True
+                    else:
+                        axs[p].plot(freqs,dat,color='blue')
+                else:
+                    if inter is False:
+                        axs[p].plot(freqs,dat,color='red',label='internode')
+                        inter=True
+                    else:
+                        axs[p].plot(freqs,dat,color='red')
+                axs[p].set_title(pol)    
+                axs[p].set_yscale('log')
+            axs[p].legend(loc='upper right')
+            axs[p].set_xlabel('Frequency (MHz)')
+            axs[p].set_ylabel('log(|Vij|)')
+            fig.suptitle('Visibility spectra for %s baselines (JD: %i)' % (orientation,JD))
+            fig.subplots_adjust(top=.94,wspace=0.05)
             
