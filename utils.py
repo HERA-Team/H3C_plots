@@ -181,10 +181,12 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
     nants = len(sm.antenna_numbers)
     data = {}
     antnumsAll = sort_antennas(sm)
+    badAnts = []
     for p in range(len(pols)):
         pol = pols[p]
         data[pol] = np.empty((nants,nants))
         for i in range(len(antnumsAll)):
+            thisAnt = []
             for j in range(len(antnumsAll)):
                 ant1 = antnumsAll[i]
                 ant2 = antnumsAll[j]
@@ -219,6 +221,7 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
                 product = np.multiply(even,np.conj(odd))
                 if metric=='amplitude':
                     data[pol][i,j] = np.abs(np.average(product))
+                    thisAnt.append(np.abs(np.average(product)))
                 elif metric=='phase':
                     product = np.average(product)
                     re = np.real(product)
@@ -227,7 +230,9 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
                     data[pol][i,j] = phase
                 else:
                     print('Invalid metric')
-    return data
+            if np.nanmedian(thisAnt) < 0.5 and antnumsAll[i] not in badAnts:
+                badAnts.append(antnumsAll[i])
+    return data, badAnts
 
 
 def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logScale=False):
