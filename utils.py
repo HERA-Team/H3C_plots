@@ -523,7 +523,7 @@ def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnt
             fig.suptitle('Visibility spectra for %s baselines (JD: %i)' % (orientation,JD))
             fig.subplots_adjust(top=.94,wspace=0.05)
 
-def plot_correlation_matrices(uvd1,HHfiles):
+def plot_correlation_matrices(uvd1,HHfiles,badThresh=0.35):
     files, lsts = get_hourly_files(uvd1, HHfiles)
     bad_antennas = []
     for file in files:
@@ -531,7 +531,7 @@ def plot_correlation_matrices(uvd1,HHfiles):
         df = UVData()
         sm.read_uvh5(file)
         df.read_uvh5('%s.diff%s' % (file[0:-5],file[-5:]))
-        matrix, badAnts = calcEvenOddAmpMatrix(sm,df,nodes='auto',badThresh=0.35)
+        matrix, badAnts = calcEvenOddAmpMatrix(sm,df,nodes='auto',badThresh=badThresh)
         for ant in badAnts:
             if ant not in bad_antennas:
                 bad_antennas.append(ant)
