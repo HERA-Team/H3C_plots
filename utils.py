@@ -449,7 +449,9 @@ def get_hourly_files(uv, HHfiles):
                 use_files.append(file)
     return use_files, use_lsts
 
-def plotVisibilitySpectra(uv,badAnts=[],length=29,pols=['xx','yy'], clipLowAnts=True):
+def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnts=True):
+    uv = UVData()
+    uv.read_uvh5(file)
     fig,axs = plt.subplots(2,1,figsize=(12,12))
     h = cm_hookup.Hookup()
     x = h.get_hookup('HH')
