@@ -172,7 +172,7 @@ def plot_wfs(uvd, pol):
     fig.show()
 
 
-def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='amplitude',flagging=False):
+def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='amplitude',flagging=False, badThresh=0.5):
     if sm.time_array[0] != df.time_array[0]:
         print('FATAL ERROR: Sum and diff files are not from the same observation!')
         return None
@@ -230,7 +230,7 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
                     data[pol][i,j] = phase
                 else:
                     print('Invalid metric')
-            if np.nanmedian(thisAnt) < 0.5 and antnumsAll[i] not in badAnts:
+            if np.nanmedian(thisAnt) < badThresh and antnumsAll[i] not in badAnts:
                 badAnts.append(antnumsAll[i])
     return data, badAnts
 
@@ -531,7 +531,7 @@ def plot_correlation_matrices(uvd1,HHfiles):
         df = UVData()
         sm.read_uvh5(file)
         df.read_uvh5('%s.diff%s' % (file[0:-5],file[-5:]))
-        matrix, badAnts = calcEvenOddAmpMatrix(sm,df,nodes='auto')
+        matrix, badAnts = calcEvenOddAmpMatrix(sm,df,nodes='auto',badThresh=0.35)
         for ant in badAnts:
             if ant not in bad_antennas:
                 bad_antennas.append(ant)
