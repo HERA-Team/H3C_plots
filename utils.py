@@ -413,7 +413,6 @@ def plot_antenna_positions(uv, badAnts=[]):
     nodes, antDict, inclNodes = generate_nodeDict(uv)
     N = len(nodes)
     cmap = plt.get_cmap('tab20')
-    colors = ['b','g','y','r','c','m']
     n = 0
     labelled = []
     for node in nodes:
@@ -585,17 +584,7 @@ def generateDataTable(uv,pols=['xx','yy']):
 
 def getInternodeMedians(uv,data,pols=['xx','yy']):
     nodeDict, antDict, inclNodes = generate_nodeDict(uv)
-    antnumsAll=[]
-    for node in nodeDict:
-        snapLocs = []
-        nodeAnts = []
-        for ant in nodeDict[node]['ants']:
-            nodeAnts.append(ant)
-        for snapLoc in nodeDict[node]['snapLocs']:
-            snapLocs.append(snapLoc)
-        snapSorted = [x for _,x in sorted(zip(snapLocs,nodeAnts))]
-        for ant in snapSorted:
-            antnumsAll.append(ant)
+    antnumsAll=sort_antennas(uv)
     nants = len(antnumsAll)
     nodeMeans = {}
     nodeCorrs = {}
@@ -627,17 +616,7 @@ def getInternodeMedians(uv,data,pols=['xx','yy']):
 
 def getIntranodeMedians(uv, data, pols=['xx','yy']):
     nodeDict, antDict, inclNodes = generate_nodeDict(uv)
-    antnumsAll=[]
-    for node in nodeDict:
-        snapLocs = []
-        nodeAnts = []
-        for ant in nodeDict[node]['ants']:
-            nodeAnts.append(ant)
-        for snapLoc in nodeDict[node]['snapLocs']:
-            snapLocs.append(snapLoc)
-        snapSorted = [x for _,x in sorted(zip(snapLocs,nodeAnts))]
-        for ant in snapSorted:
-            antnumsAll.append(ant)
+    antnumsAll=sort_antennas(uv)
     nodeMeans = {}
     start=0
     for node in nodeDict:
