@@ -172,7 +172,7 @@ def plot_wfs(uvd, pol):
     fig.show()
 
 
-def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='amplitude',flagging=False, badThresh=0.5):
+def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto', badThresh=0.5):
     if sm.time_array[0] != df.time_array[0]:
         print('FATAL ERROR: Sum and diff files are not from the same observation!')
         return None
@@ -190,46 +190,15 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
             for j in range(len(antnumsAll)):
                 ant1 = antnumsAll[i]
                 ant2 = antnumsAll[j]
-                if freq=='avg':
-                    s = sm.get_data(ant1,ant2,pol)
-                    d = df.get_data(ant1,ant2,pol)
-                    sflg = np.invert(sm.get_flags(ant1,ant2,pol))
-                    dflg = np.invert(df.get_flags(ant1,ant2,pol))
-                elif len(freq)==1:
-                    freqs = sm.freq_array[0]
-                    freqind = (np.abs(freqs - freq*1000000)).argmin()
-                    s = sm.get_data(ant1,ant2,pol)[:,freqind]
-                    d = df.get_data(ant1,ant2,pol)[:,freqind]
-                    sflg = np.invert(sm.get_flags(ant1,ant2,pol)[:,freqind])
-                    dflg = np.invert(df.get_flags(ant1,ant2,pol)[:,freqind])
-                else:
-                    freqs = sm.freq_array[0]
-                    freqindHigh = (np.abs(freqs - freq[-1]*1000000)).argmin()
-                    freqindLow = (np.abs(freqs - freq[0]*1000000)).argmin()
-                    s = sm.get_data(ant1,ant2,pol)[:,freqindLow:freqindHigh]
-                    d = df.get_data(ant1,ant2,pol)[:,freqindLow:freqindHigh]
-                    sflg = np.invert(sm.get_flags(ant1,ant2,pol)[:,freqindLow:freqindHigh])
-                    dflg = np.invert(df.get_flags(ant1,ant2,pol)[:,freqindLow:freqindHigh])
-                if flagging is True:
-                    flags = np.logical_and(sflg,dflg)
-                    s = s[flags]
-                    d = d[flags]
+                s = sm.get_data(ant1,ant2,pol)
+                d = df.get_data(ant1,ant2,pol)
                 even = (s + d)/2
                 even = np.divide(even,np.abs(even))
                 odd = (s - d)/2
                 odd = np.divide(odd,np.abs(odd))
                 product = np.multiply(even,np.conj(odd))
-                if metric=='amplitude':
-                    data[pol][i,j] = np.abs(np.average(product))
-                    thisAnt.append(np.abs(np.average(product)))
-                elif metric=='phase':
-                    product = np.average(product)
-                    re = np.real(product)
-                    imag = np.imag(product)
-                    phase = np.arctan(np.divide(imag,re))
-                    data[pol][i,j] = phase
-                else:
-                    print('Invalid metric')
+                data[pol][i,j] = np.abs(np.average(product))
+                thisAnt.append(np.abs(np.average(product)))
             if np.nanmedian(thisAnt) < badThresh and antnumsAll[i] not in badAnts:
                 badAnts.append(antnumsAll[i])
     return data, badAnts
@@ -276,11 +245,9 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
     axs[0].set_yticks(np.arange(nantsTotal,0,-1))
     axs[0].set_yticklabels(antnumsAll)
     axs[0].set_ylabel('Antenna Number')
-    #axs[1].text(nantsTotal-8,nantsTotal+3,'LST: %f' % lst,fontsize=12)
     cbar_ax = fig.add_axes([0.95,0.53,0.02,0.38])
     cbar_ax.set_xlabel('|V|', rotation=0)
     cbar = fig.colorbar(im, cax=cbar_ax)
-    #fig.suptitle('JD: ' + str(jd) + ', Frequency Range: ' + '%i-%iMHz' % (freq[0],freq[1]))
     fig.suptitle('Correlation Matrix - JD: %s, LST: %.0fh' % (str(jd),np.round(lst,0)))
     fig.subplots_adjust(top=1.32,wspace=0.05)
     
