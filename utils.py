@@ -412,11 +412,12 @@ def plot_antenna_positions(uv, badAnts=[]):
     plt.figure(figsize=(12,10))
     nodes, antDict, inclNodes = generate_nodeDict(uv)
     N = len(nodes)
+    cmap = plt.get_cmap('tab20')
     colors = ['b','g','y','r','c','m']
     n = 0
     labelled = []
     for node in nodes:
-        color = colors[n]
+        color = cmap(round(20/N*n))
         n += 1
         ants = nodes[node]['ants']
         for antNum in ants:
@@ -523,17 +524,129 @@ def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnt
             fig.suptitle('Visibility spectra for %s baselines (JD: %i)' % (orientation,JD))
             fig.subplots_adjust(top=.94,wspace=0.05)
 
-def plot_correlation_matrices(uvd1,HHfiles,badThresh=0.35):
+def plot_correlation_matrices(uvd1,HHfiles,badThresh=0.35,pols=['xx','yy']):
     files, lsts = get_hourly_files(uvd1, HHfiles)
+    nodeDict, antDict, inclNodes = generate_nodeDict(uvd1)
     bad_antennas = []
+    corrSummary = generateDataTable(uvd1)
     for file in files:
         sm = UVData()
         df = UVData()
         sm.read_uvh5(file)
         df.read_uvh5('%s.diff%s' % (file[0:-5],file[-5:]))
         matrix, badAnts = calcEvenOddAmpMatrix(sm,df,nodes='auto',badThresh=badThresh)
+        nodeInfo = {
+            'inter' : getInternodeMedians(sm,matrix),
+            'intra' : getIntranodeMedians(sm,matrix)
+        }
+        for node in nodeDict:
+            for pol in pols:
+                corrSummary[node][pol]['inter'].append(nodeInfo['inter'][node][pol])
+                corrSummary[node][pol]['intra'].append(nodeInfo['intra'][node][pol])
         for ant in badAnts:
             if ant not in bad_antennas:
                 bad_antennas.append(ant)
         plotCorrMatrix(sm, matrix, nodes='auto')
+    plotNodeSummary(corrSummary, nodeDict, lsts)
     return bad_antennas
+
+def plotNodeSummary(data, nodeDict, lsts, pols=['xx','yy']):
+    fig,axs = plt.subplots(1,2,figsize=(16,8))
+    cmap = plt.get_cmap('Paired')
+    for n in range(len(nodeDict)):
+        node = list(nodeDict.keys())[n]
+        p=0
+        for pol in pols:
+            axs[0].plot(lsts,data[node][pol]['inter'],color=cmap((n*2)+p),label='Node %s - %s' % (node,pol))
+            axs[1].plot(lsts,data[node][pol]['intra'],color=cmap((n*2)+p),label='Node %s - %s' % (node,pol))
+            p += 1
+    axs[0].set_title('Internodes')
+    axs[0].set_xlabel('LST (hours)')
+    axs[0].legend()
+    axs[0].set_ylim(0.3,1)
+    axs[1].set_title('Intranodes')
+    axs[1].set_xlabel('LST (hours)')
+    axs[1].set_ylabel('Median Correlation Metric')
+    axs[1].legend()
+    axs[1].set_ylim(0.3,1)
+    fig.suptitle('Summary of Correlations by Node')
+
+def generateDataTable(uv,pols=['xx','yy']):
+    nodeDict, antDict, inclNodes = generate_nodeDict(uv)
+    dataObject = {}
+    for node in nodeDict:
+        dataObject[node] = {}
+        for pol in pols:
+            dataObject[node][pol] = {
+                'inter' : [],
+                'intra' : []
+            }
+    return dataObject
+
+def getInternodeMedians(uv,data,pols=['xx','yy']):
+    nodeDict, antDict, inclNodes = generate_nodeDict(uv)
+    antnumsAll=[]
+    for node in nodeDict:
+        snapLocs = []
+        nodeAnts = []
+        for ant in nodeDict[node]['ants']:
+            nodeAnts.append(ant)
+        for snapLoc in nodeDict[node]['snapLocs']:
+            snapLocs.append(snapLoc)
+        snapSorted = [x for _,x in sorted(zip(snapLocs,nodeAnts))]
+        for ant in snapSorted:
+            antnumsAll.append(ant)
+    nants = len(antnumsAll)
+    nodeMeans = {}
+    nodeCorrs = {}
+    for node in nodeDict:
+        nodeCorrs[node] = {}
+        nodeMeans[node] = {}
+        for pol in pols:
+            nodeCorrs[node][pol] = []        
+    start=0
+    h = cm_hookup.Hookup()
+    x = h.get_hookup('HH')
+    for pol in pols:
+        for i in range(nants):
+            for j in range(nants):
+                ant1 = antnumsAll[i]
+                ant2 = antnumsAll[j]
+                key1 = 'HH%i:A' % (ant1)
+                n1 = x[key1].get_part_in_hookup_from_type('node')['E<ground'][2]
+                key2 = 'HH%i:A' % (ant2)
+                n2 = x[key2].get_part_in_hookup_from_type('node')['E<ground'][2]
+                dat = data[pol][i,j]
+                if n1 != n2:
+                    nodeCorrs[n1][pol].append(dat)
+                    nodeCorrs[n2][pol].append(dat)
+    for node in nodeDict:
+        for pol in pols:
+            nodeMeans[node][pol] = np.nanmedian(nodeCorrs[node][pol])
+    return nodeMeans
+
+def getIntranodeMedians(uv, data, pols=['xx','yy']):
+    nodeDict, antDict, inclNodes = generate_nodeDict(uv)
+    antnumsAll=[]
+    for node in nodeDict:
+        snapLocs = []
+        nodeAnts = []
+        for ant in nodeDict[node]['ants']:
+            nodeAnts.append(ant)
+        for snapLoc in nodeDict[node]['snapLocs']:
+            snapLocs.append(snapLoc)
+        snapSorted = [x for _,x in sorted(zip(snapLocs,nodeAnts))]
+        for ant in snapSorted:
+            antnumsAll.append(ant)
+    nodeMeans = {}
+    start=0
+    for node in nodeDict:
+        nodeMeans[node]={}
+        for pol in pols:
+            nodeCorrs = []
+            for i in range(start,start+len(nodeDict[node]['ants'])):
+                for j in range(start,start+len(nodeDict[node]['ants'])):
+                    nodeCorrs.append(data[pol][i,j])
+            nodeMeans[node][pol] = np.nanmedian(nodeCorrs)
+        start += len(nodeDict[node]['ants'])
+    return nodeMeans
