@@ -172,7 +172,7 @@ def plot_wfs(uvd, pol):
     fig.show()
 
 
-def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='amplitude',flagging=False, badThresh=0.5):
+def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto', badThresh=0.5):
     if sm.time_array[0] != df.time_array[0]:
         print('FATAL ERROR: Sum and diff files are not from the same observation!')
         return None
@@ -190,46 +190,15 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto',freq='avg',metric='
             for j in range(len(antnumsAll)):
                 ant1 = antnumsAll[i]
                 ant2 = antnumsAll[j]
-                if freq=='avg':
-                    s = sm.get_data(ant1,ant2,pol)
-                    d = df.get_data(ant1,ant2,pol)
-                    sflg = np.invert(sm.get_flags(ant1,ant2,pol))
-                    dflg = np.invert(df.get_flags(ant1,ant2,pol))
-                elif len(freq)==1:
-                    freqs = sm.freq_array[0]
-                    freqind = (np.abs(freqs - freq*1000000)).argmin()
-                    s = sm.get_data(ant1,ant2,pol)[:,freqind]
-                    d = df.get_data(ant1,ant2,pol)[:,freqind]
-                    sflg = np.invert(sm.get_flags(ant1,ant2,pol)[:,freqind])
-                    dflg = np.invert(df.get_flags(ant1,ant2,pol)[:,freqind])
-                else:
-                    freqs = sm.freq_array[0]
-                    freqindHigh = (np.abs(freqs - freq[-1]*1000000)).argmin()
-                    freqindLow = (np.abs(freqs - freq[0]*1000000)).argmin()
-                    s = sm.get_data(ant1,ant2,pol)[:,freqindLow:freqindHigh]
-                    d = df.get_data(ant1,ant2,pol)[:,freqindLow:freqindHigh]
-                    sflg = np.invert(sm.get_flags(ant1,ant2,pol)[:,freqindLow:freqindHigh])
-                    dflg = np.invert(df.get_flags(ant1,ant2,pol)[:,freqindLow:freqindHigh])
-                if flagging is True:
-                    flags = np.logical_and(sflg,dflg)
-                    s = s[flags]
-                    d = d[flags]
+                s = sm.get_data(ant1,ant2,pol)
+                d = df.get_data(ant1,ant2,pol)
                 even = (s + d)/2
                 even = np.divide(even,np.abs(even))
                 odd = (s - d)/2
                 odd = np.divide(odd,np.abs(odd))
                 product = np.multiply(even,np.conj(odd))
-                if metric=='amplitude':
-                    data[pol][i,j] = np.abs(np.average(product))
-                    thisAnt.append(np.abs(np.average(product)))
-                elif metric=='phase':
-                    product = np.average(product)
-                    re = np.real(product)
-                    imag = np.imag(product)
-                    phase = np.arctan(np.divide(imag,re))
-                    data[pol][i,j] = phase
-                else:
-                    print('Invalid metric')
+                data[pol][i,j] = np.abs(np.average(product))
+                thisAnt.append(np.abs(np.average(product)))
             if np.nanmedian(thisAnt) < badThresh and antnumsAll[i] not in badAnts:
                 badAnts.append(antnumsAll[i])
     return data, badAnts
@@ -276,11 +245,9 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
     axs[0].set_yticks(np.arange(nantsTotal,0,-1))
     axs[0].set_yticklabels(antnumsAll)
     axs[0].set_ylabel('Antenna Number')
-    #axs[1].text(nantsTotal-8,nantsTotal+3,'LST: %f' % lst,fontsize=12)
     cbar_ax = fig.add_axes([0.95,0.53,0.02,0.38])
     cbar_ax.set_xlabel('|V|', rotation=0)
     cbar = fig.colorbar(im, cax=cbar_ax)
-    #fig.suptitle('JD: ' + str(jd) + ', Frequency Range: ' + '%i-%iMHz' % (freq[0],freq[1]))
     fig.suptitle('Correlation Matrix - JD: %s, LST: %.0fh' % (str(jd),np.round(lst,0)))
     fig.subplots_adjust(top=1.32,wspace=0.05)
     
@@ -412,11 +379,11 @@ def plot_antenna_positions(uv, badAnts=[]):
     plt.figure(figsize=(12,10))
     nodes, antDict, inclNodes = generate_nodeDict(uv)
     N = len(nodes)
-    colors = ['b','g','y','r','c','m']
+    cmap = plt.get_cmap('tab20')
     n = 0
     labelled = []
     for node in nodes:
-        color = colors[n]
+        color = cmap(round(20/N*n))
         n += 1
         ants = nodes[node]['ants']
         for antNum in ants:
@@ -523,17 +490,109 @@ def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnt
             fig.suptitle('Visibility spectra for %s baselines (JD: %i)' % (orientation,JD))
             fig.subplots_adjust(top=.94,wspace=0.05)
 
-def plot_correlation_matrices(uvd1,HHfiles,badThresh=0.35):
+def plot_correlation_matrices(uvd1,HHfiles,badThresh=0.35,pols=['xx','yy']):
     files, lsts = get_hourly_files(uvd1, HHfiles)
+    nodeDict, antDict, inclNodes = generate_nodeDict(uvd1)
     bad_antennas = []
+    corrSummary = generateDataTable(uvd1)
     for file in files:
         sm = UVData()
         df = UVData()
         sm.read_uvh5(file)
         df.read_uvh5('%s.diff%s' % (file[0:-5],file[-5:]))
         matrix, badAnts = calcEvenOddAmpMatrix(sm,df,nodes='auto',badThresh=badThresh)
+        nodeInfo = {
+            'inter' : getInternodeMedians(sm,matrix),
+            'intra' : getIntranodeMedians(sm,matrix)
+        }
+        for node in nodeDict:
+            for pol in pols:
+                corrSummary[node][pol]['inter'].append(nodeInfo['inter'][node][pol])
+                corrSummary[node][pol]['intra'].append(nodeInfo['intra'][node][pol])
         for ant in badAnts:
             if ant not in bad_antennas:
                 bad_antennas.append(ant)
         plotCorrMatrix(sm, matrix, nodes='auto')
+    plotNodeSummary(corrSummary, nodeDict, lsts)
     return bad_antennas
+
+def plotNodeSummary(data, nodeDict, lsts, pols=['xx','yy']):
+    fig,axs = plt.subplots(1,2,figsize=(16,8))
+    cmap = plt.get_cmap('Paired')
+    for n in range(len(nodeDict)):
+        node = list(nodeDict.keys())[n]
+        p=0
+        for pol in pols:
+            axs[0].plot(lsts,data[node][pol]['inter'],color=cmap((n*2)+p),label='Node %s - %s' % (node,pol))
+            axs[1].plot(lsts,data[node][pol]['intra'],color=cmap((n*2)+p),label='Node %s - %s' % (node,pol))
+            p += 1
+    axs[0].set_title('Internodes')
+    axs[0].set_xlabel('LST (hours)')
+    axs[0].legend()
+    axs[0].set_ylim(0.3,1)
+    axs[1].set_title('Intranodes')
+    axs[1].set_xlabel('LST (hours)')
+    axs[1].set_ylabel('Median Correlation Metric')
+    axs[1].legend()
+    axs[1].set_ylim(0.3,1)
+    fig.suptitle('Summary of Correlations by Node')
+
+def generateDataTable(uv,pols=['xx','yy']):
+    nodeDict, antDict, inclNodes = generate_nodeDict(uv)
+    dataObject = {}
+    for node in nodeDict:
+        dataObject[node] = {}
+        for pol in pols:
+            dataObject[node][pol] = {
+                'inter' : [],
+                'intra' : []
+            }
+    return dataObject
+
+def getInternodeMedians(uv,data,pols=['xx','yy']):
+    nodeDict, antDict, inclNodes = generate_nodeDict(uv)
+    antnumsAll=sort_antennas(uv)
+    nants = len(antnumsAll)
+    nodeMeans = {}
+    nodeCorrs = {}
+    for node in nodeDict:
+        nodeCorrs[node] = {}
+        nodeMeans[node] = {}
+        for pol in pols:
+            nodeCorrs[node][pol] = []        
+    start=0
+    h = cm_hookup.Hookup()
+    x = h.get_hookup('HH')
+    for pol in pols:
+        for i in range(nants):
+            for j in range(nants):
+                ant1 = antnumsAll[i]
+                ant2 = antnumsAll[j]
+                key1 = 'HH%i:A' % (ant1)
+                n1 = x[key1].get_part_in_hookup_from_type('node')['E<ground'][2]
+                key2 = 'HH%i:A' % (ant2)
+                n2 = x[key2].get_part_in_hookup_from_type('node')['E<ground'][2]
+                dat = data[pol][i,j]
+                if n1 != n2:
+                    nodeCorrs[n1][pol].append(dat)
+                    nodeCorrs[n2][pol].append(dat)
+    for node in nodeDict:
+        for pol in pols:
+            nodeMeans[node][pol] = np.nanmedian(nodeCorrs[node][pol])
+    return nodeMeans
+
+def getIntranodeMedians(uv, data, pols=['xx','yy']):
+    nodeDict, antDict, inclNodes = generate_nodeDict(uv)
+    antnumsAll=sort_antennas(uv)
+    nodeMeans = {}
+    start=0
+    for node in nodeDict:
+        nodeMeans[node]={}
+        for pol in pols:
+            nodeCorrs = []
+            for i in range(start,start+len(nodeDict[node]['ants'])):
+                for j in range(start,start+len(nodeDict[node]['ants'])):
+                    nodeCorrs.append(data[pol][i,j])
+            nodeMeans[node][pol] = np.nanmedian(nodeCorrs)
+        start += len(nodeDict[node]['ants'])
+    return nodeMeans
