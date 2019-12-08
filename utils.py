@@ -172,7 +172,178 @@ def plot_wfs(uvd, pol):
     fig.colorbar(im, cax=cbar_ax)
     fig.show()
 
+def plot_closure(uvd, triad_length, pol):
+    """Plot closure phase for an example triad.
+    Parameters
+    ----------
+    files : list of strings
+        List of data filenames
+    triad_length : float {14., 29.}
+        Length of the triangle segment length. Must be 14 or 29.
+    pol : str {xx, yy}
+        Polarization to plot.
+    Returns
+    -------
+    None
+    """
 
+
+    if triad_length == 14.:
+        triad_list = [[0, 11, 12], [0, 1, 12], [1, 12, 13], [1, 2, 13],
+                      [2, 13, 14], [11, 23, 24], [11, 12, 24], [12, 24, 25],
+                      [12, 13, 25], [13, 25, 26], [13, 14, 26], [14, 26, 27],
+                      [23, 36, 37], [23, 24, 37], [24, 37, 38], [24, 25, 38],
+                      [25, 38, 39], [25, 26, 39], [26, 39, 40], [26, 27, 40],
+                      [27, 40, 41], [36, 37, 51], [37, 51, 52], [37, 38, 52],
+                      [38, 52, 53], [38, 39, 53], [39, 53, 54], [39, 40, 54],
+                      [40, 54, 55], [40, 41, 55], [51, 66, 67], [51, 52, 67],
+                      [53, 54, 69], [54, 69, 70], [54, 55, 70], [55, 70, 71],
+                      [65, 66, 82], [66, 82, 83], [66, 67, 83], [67, 83, 84],
+                      [70, 71, 87], [120, 121, 140], [121, 140, 141], [121, 122, 141],
+                      [122, 141, 142], [122, 123, 142], [123, 142, 143], [123, 124, 143]]
+    else:
+        triad_list = [[0, 23, 25], [0, 2, 25], [1, 24, 26], [2, 25, 27], [11, 36, 38],
+                      [11, 13, 38], [12, 37, 39], [12, 14, 39], [13, 38, 40], [14, 39, 41],
+                      [23, 25, 52], [24, 51, 53], [24, 26, 53], [25, 52, 54], [25, 27, 54],
+                      [26, 53, 55], [36, 65, 67], [36, 38, 67], [38, 67, 69], [38, 40, 69],
+                      [39, 41, 70], [40, 69, 71], [51, 82, 84], [51, 53, 84], [52, 83, 85],
+                      [52, 54, 85], [54, 85, 87], [83, 85, 120], [85, 120, 122], [85, 87, 122],
+                      [87, 122, 124]]
+
+
+    # Look for a triad that exists in the data
+    for triad in triad_list:
+        bls = [[triad[0], triad[1]], [triad[1], triad[2]], [triad[2], triad[0]]]
+        triad_in = True
+        for bl in bls:
+            inds = uvd.antpair2ind(bl[0], bl[1], ordered=False)
+            if len(inds) == 0:
+                triad_in = False
+                break
+        if triad_in:
+            break
+
+    if not triad_in:
+        raise ValueError('Could not find triad in data.')
+
+    closure_ph = np.angle(uvd.get_data(triad[0], triad[1], pol)
+                          * uvd.get_data(triad[1], triad[2], pol)
+                          * uvd.get_data(triad[2], triad[0], pol))
+    plt.imshow(closure_ph, aspect='auto', rasterized=True,
+                           interpolation='nearest', cmap = 'twilight')
+    
+def plotNodeAveragedSummary(uv,HHfiles,pols=['xx','yy'],baseline_groups=[],removeBadAnts=False):
+    baseline_groups = [(14,0,'14m E-W'),(14,-11,'14m NW-SE'),(14,11,'14m SW-NE'),(29,0,'29m E-W'),(29,22,'29m SW-NE'),
+                   (44,0,'44m E-W'),(58.5,0,'58m E-W'),(73,0,'73m E-W'),(87.6,0,'88m E-W'),
+                  (102.3,0,'102m E-W')]
+    fig,axs = plt.subplots(len(pols),2,figsize=(16,16))
+    maxLength = 0
+    cmap = plt.get_cmap('Blues')
+    nodeMedians,lsts,badAnts=get_correlation_baseline_evolutions(uv,HHfiles,bl_type=baseline_groups,removeBadAnts=removeBadAnts)
+    for group in baseline_groups:
+        if group[0] > maxLength:
+            maxLength = group[0]
+    for group in baseline_groups:
+        length = group[0]
+        data = nodeMedians[group[2]]
+        colorInd = float(length/maxLength)
+        for i in range(len(pols)):
+            pol = pols[i]
+            axs[i][0].plot(lsts, data['inter'][pol], color=cmap(colorInd), label=group[2])
+            axs[i][1].plot(lsts, data['intra'][pol], color=cmap(colorInd), label=group[2])
+            axs[i][0].set_ylabel('Median Correlation Metric')
+            axs[i][0].set_title('Internode, Polarization %s' % pol)
+            axs[i][1].set_title('Intranode, Polarization %s' % pol)
+    axs[1][1].legend()
+    axs[1][0].set_xlabel('LST (hours)')
+    axs[1][1].set_xlabel('LST (hours)')
+    return badAnts
+    
+def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnts=True):
+    fig, axs = plt.subplots(4,2,figsize=(12,16))
+    plt.subplots_adjust(wspace=0.25)
+    uv = UVData()
+    uv.read_uvh5(file)
+    h = cm_hookup.Hookup()
+    x = h.get_hookup('HH')
+    baseline_groups = get_baseline_groups(uv)
+    freqs = uv.freq_array[0]/1000000
+    loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
+    obstime_start = Time(uv.time_array[0],format='jd',location=loc)
+    startTime = obstime_start.sidereal_time('mean').hour
+    JD = int(obstime_start.jd)
+    j = 0
+    for orientation in baseline_groups:
+        bls = baseline_groups[orientation]
+        for p in range(len(pols)):
+            inter=False
+            intra=False
+            pol = pols[p]
+            for i in range(len(bls)):
+                ants = uv.baseline_to_antnums(bls[i])
+                ant1 = ants[0]
+                ant2 = ants[1]
+                key1 = 'HH%i:A' % (ant1)
+                n1 = x[key1].get_part_in_hookup_from_type('node')['E<ground'][2]
+                key2 = 'HH%i:A' % (ant2)
+                n2 = x[key2].get_part_in_hookup_from_type('node')['E<ground'][2]
+                dat = np.mean(np.abs(uv.get_data(ant1,ant2,pol)),0)
+                auto1 = np.mean(np.abs(uv.get_data(ant1,ant1,pol)),0)
+                auto2 = np.mean(np.abs(uv.get_data(ant2,ant2,pol)),0)
+                norm = np.sqrt(np.multiply(auto1,auto2))
+                dat = np.divide(dat,norm)
+                if ant1 in badAnts or ant2 in badAnts:
+                    continue
+                if n1 == n2:
+                    if intra is False:
+                        axs[j][p].plot(freqs,dat,color='blue',label='intranode')
+                        intra=True
+                    else:
+                        axs[j][p].plot(freqs,dat,color='blue')
+                else:
+                    if inter is False:
+                        axs[j][p].plot(freqs,dat,color='red',label='internode')
+                        inter=True
+                    else:
+                        axs[j][p].plot(freqs,dat,color='red')
+                axs[j][p].set_yscale('log')
+                axs[j][p].set_title('%s: %s pol' % (orientation,pols[p]))
+                if j == 0:
+                    axs[0][0].legend()
+                    axs[3][p].set_xlabel('Frequency (MHz)')
+        axs[j][0].set_ylabel('log(|Vij|)')
+        j += 1
+    fig.suptitle('Visibility spectra (JD: %i)' % (JD))
+    fig.subplots_adjust(top=.94,wspace=0.05)
+    
+def plot_antenna_positions(uv, badAnts=[]):
+    plt.figure(figsize=(12,10))
+    nodes, antDict, inclNodes = generate_nodeDict(uv)
+    N = len(nodes)
+    cmap = plt.get_cmap('tab20')
+    n = 0
+    labelled = []
+    for node in nodes:
+        color = cmap(round(20/N*n))
+        n += 1
+        ants = nodes[node]['ants']
+        for antNum in ants:
+            width = 0
+            idx = np.argwhere(uv.antenna_numbers == antNum)[0][0]
+            antPos = uv.antenna_positions[idx]
+            if antNum in badAnts:
+                width=5
+            if antNum == ants[0]:
+                plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,label=str(node),
+                        markeredgecolor='black',markeredgewidth=width)
+                labelled.append(node)
+            else:
+                plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,
+                        markeredgecolor='black',markeredgewidth=width)
+            plt.text(antPos[1]-1.5,antPos[2],str(antNum))
+    plt.legend(title='Node Number',bbox_to_anchor=(1.15,0.9),markerscale=0.5,labelspacing=1.5)
+    plt.title('Antenna Locations')
+    
 def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto', badThresh=0.5):
     if sm.time_array[0] != df.time_array[0]:
         print('FATAL ERROR: Sum and diff files are not from the same observation!')
@@ -252,158 +423,6 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
     fig.suptitle('Correlation Matrix - JD: %s, LST: %.0fh' % (str(jd),np.round(lst,0)))
     fig.subplots_adjust(top=1.32,wspace=0.05)
     
-def generate_nodeDict(uv):
-    antnums = uv.antenna_numbers
-    h = cm_hookup.Hookup()
-    x = h.get_hookup('HH')
-    nodes = {}
-    antDict = {}
-    inclNodes = []
-    for ant in antnums:
-        key = 'HH%i:A' % (ant)
-        n = x[key].get_part_in_hookup_from_type('node')['E<ground'][2]
-        snapLoc = (x[key].hookup['E<ground'][-1].downstream_input_port[-1], ant)
-        snapInput = (x[key].hookup['E<ground'][-2].downstream_input_port[1:], ant)
-        antDict[ant] = {}
-        antDict[ant]['node'] = str(n)
-        antDict[ant]['snapLocs'] = snapLoc
-        antDict[ant]['snapInput'] = snapInput
-        inclNodes.append(n)
-        if n in nodes:
-            nodes[n]['ants'].append(ant)
-            nodes[n]['snapLocs'].append(snapLoc)
-            nodes[n]['snapInput'].append(snapInput)
-        else:
-            nodes[n] = {}
-            nodes[n]['ants'] = [ant]
-            nodes[n]['snapLocs'] = [snapLoc]
-            nodes[n]['snapInput'] = [snapInput]
-    inclNodes = np.unique(inclNodes)
-    return nodes, antDict, inclNodes
-
-def sort_antennas(uv):
-    nodes, antDict, inclNodes = generate_nodeDict(uv)
-    sortedAntennas = []
-    for n in sorted(inclNodes):
-        snappairs = []
-        h = cm_hookup.Hookup()
-        x = h.get_hookup('HH')
-        for ant in nodes[n]['ants']:
-            snappairs.append(antDict[ant]['snapLocs'])
-        snapLocs = {}
-        locs = []
-        for pair in snappairs:
-            ant = pair[1]
-            loc = pair[0]
-            locs.append(loc)
-            if loc in snapLocs:
-                snapLocs[loc].append(ant)
-            else:
-                snapLocs[loc] = [ant]
-        locs = sorted(np.unique(locs))
-        ants_sorted = []
-        for loc in locs:
-            ants = snapLocs[loc]
-            inputpairs = []
-            for ant in ants:
-                key = 'HH%i:A' % (ant)
-                pair = (int(x[key].hookup['E<ground'][-2].downstream_input_port[1:]), ant)
-                inputpairs.append(pair)
-            for _,a in sorted(inputpairs):
-                ants_sorted.append(a)
-        for ant in ants_sorted:
-            sortedAntennas.append(ant)
-    return sortedAntennas
-
-
-def plot_closure(uvd, triad_length, pol):
-    """Plot closure phase for an example triad.
-    Parameters
-    ----------
-    files : list of strings
-        List of data filenames
-    triad_length : float {14., 29.}
-        Length of the triangle segment length. Must be 14 or 29.
-    pol : str {xx, yy}
-        Polarization to plot.
-    Returns
-    -------
-    None
-    """
-
-
-    if triad_length == 14.:
-        triad_list = [[0, 11, 12], [0, 1, 12], [1, 12, 13], [1, 2, 13],
-                      [2, 13, 14], [11, 23, 24], [11, 12, 24], [12, 24, 25],
-                      [12, 13, 25], [13, 25, 26], [13, 14, 26], [14, 26, 27],
-                      [23, 36, 37], [23, 24, 37], [24, 37, 38], [24, 25, 38],
-                      [25, 38, 39], [25, 26, 39], [26, 39, 40], [26, 27, 40],
-                      [27, 40, 41], [36, 37, 51], [37, 51, 52], [37, 38, 52],
-                      [38, 52, 53], [38, 39, 53], [39, 53, 54], [39, 40, 54],
-                      [40, 54, 55], [40, 41, 55], [51, 66, 67], [51, 52, 67],
-                      [53, 54, 69], [54, 69, 70], [54, 55, 70], [55, 70, 71],
-                      [65, 66, 82], [66, 82, 83], [66, 67, 83], [67, 83, 84],
-                      [70, 71, 87], [120, 121, 140], [121, 140, 141], [121, 122, 141],
-                      [122, 141, 142], [122, 123, 142], [123, 142, 143], [123, 124, 143]]
-    else:
-        triad_list = [[0, 23, 25], [0, 2, 25], [1, 24, 26], [2, 25, 27], [11, 36, 38],
-                      [11, 13, 38], [12, 37, 39], [12, 14, 39], [13, 38, 40], [14, 39, 41],
-                      [23, 25, 52], [24, 51, 53], [24, 26, 53], [25, 52, 54], [25, 27, 54],
-                      [26, 53, 55], [36, 65, 67], [36, 38, 67], [38, 67, 69], [38, 40, 69],
-                      [39, 41, 70], [40, 69, 71], [51, 82, 84], [51, 53, 84], [52, 83, 85],
-                      [52, 54, 85], [54, 85, 87], [83, 85, 120], [85, 120, 122], [85, 87, 122],
-                      [87, 122, 124]]
-
-
-    # Look for a triad that exists in the data
-    for triad in triad_list:
-        bls = [[triad[0], triad[1]], [triad[1], triad[2]], [triad[2], triad[0]]]
-        triad_in = True
-        for bl in bls:
-            inds = uvd.antpair2ind(bl[0], bl[1], ordered=False)
-            if len(inds) == 0:
-                triad_in = False
-                break
-        if triad_in:
-            break
-
-    if not triad_in:
-        raise ValueError('Could not find triad in data.')
-
-    closure_ph = np.angle(uvd.get_data(triad[0], triad[1], pol)
-                          * uvd.get_data(triad[1], triad[2], pol)
-                          * uvd.get_data(triad[2], triad[0], pol))
-    plt.imshow(closure_ph, aspect='auto', rasterized=True,
-                           interpolation='nearest', cmap = 'twilight')
-    
-def plot_antenna_positions(uv, badAnts=[]):
-    plt.figure(figsize=(12,10))
-    nodes, antDict, inclNodes = generate_nodeDict(uv)
-    N = len(nodes)
-    cmap = plt.get_cmap('tab20')
-    n = 0
-    labelled = []
-    for node in nodes:
-        color = cmap(round(20/N*n))
-        n += 1
-        ants = nodes[node]['ants']
-        for antNum in ants:
-            width = 0
-            idx = np.argwhere(uv.antenna_numbers == antNum)[0][0]
-            antPos = uv.antenna_positions[idx]
-            if antNum in badAnts:
-                width=5
-            if antNum == ants[0]:
-                plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,label=str(node),
-                        markeredgecolor='black',markeredgewidth=width)
-                labelled.append(node)
-            else:
-                plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,
-                        markeredgecolor='black',markeredgewidth=width)
-            plt.text(antPos[1]-1.5,antPos[2],str(antNum))
-    plt.legend(title='Node Number',bbox_to_anchor=(1.15,0.9),markerscale=0.5,labelspacing=1.5)
-    plt.title('Antenna Locations')
-    
 def get_hourly_files(uv, HHfiles):
     use_lsts = []
     use_files = []
@@ -438,89 +457,7 @@ def get_baseline_groups(uv, bl_groups=[(14,0,'14m E-W'),(29,0,'29m E-W'),(14,-11
                     bls[group[2]] = bl
     return bls
 
-def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnts=True):
-    fig, axs = plt.subplots(4,2,figsize=(12,16))
-    plt.subplots_adjust(wspace=0.25)
-    uv = UVData()
-    uv.read_uvh5(file)
-    h = cm_hookup.Hookup()
-    x = h.get_hookup('HH')
-    baseline_groups = get_baseline_groups(uv)
-    freqs = uv.freq_array[0]/1000000
-    loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
-    obstime_start = Time(uv.time_array[0],format='jd',location=loc)
-    startTime = obstime_start.sidereal_time('mean').hour
-    JD = int(obstime_start.jd)
-    j = 0
-    for orientation in baseline_groups:
-        bls = baseline_groups[orientation]
-        for p in range(len(pols)):
-            inter=False
-            intra=False
-            pol = pols[p]
-            for i in range(len(bls)):
-                ants = uv.baseline_to_antnums(bls[i])
-                ant1 = ants[0]
-                ant2 = ants[1]
-                key1 = 'HH%i:A' % (ant1)
-                n1 = x[key1].get_part_in_hookup_from_type('node')['E<ground'][2]
-                key2 = 'HH%i:A' % (ant2)
-                n2 = x[key2].get_part_in_hookup_from_type('node')['E<ground'][2]
-                dat = np.mean(np.abs(uv.get_data(ant1,ant2,pol)),0)
-                auto1 = np.mean(np.abs(uv.get_data(ant1,ant1,pol)),0)
-                auto2 = np.mean(np.abs(uv.get_data(ant2,ant2,pol)),0)
-                norm = np.sqrt(np.multiply(auto1,auto2))
-                dat = np.divide(dat,norm)
-                if ant1 in badAnts or ant2 in badAnts:
-                    continue
-                if n1 == n2:
-                    if intra is False:
-                        axs[j][p].plot(freqs,dat,color='blue',label='intranode')
-                        intra=True
-                    else:
-                        axs[j][p].plot(freqs,dat,color='blue')
-                else:
-                    if inter is False:
-                        axs[j][p].plot(freqs,dat,color='red',label='internode')
-                        inter=True
-                    else:
-                        axs[j][p].plot(freqs,dat,color='red')
-                axs[j][p].set_yscale('log')
-                axs[j][p].set_title('%s: %s pol' % (orientation,pols[p]))
-                if j == 0:
-                    axs[0][0].legend()
-                    axs[3][p].set_xlabel('Frequency (MHz)')
-        axs[j][0].set_ylabel('log(|Vij|)')
-        j += 1
-    fig.suptitle('Visibility spectra (JD: %i)' % (JD))
-    fig.subplots_adjust(top=.94,wspace=0.05)
 
-def plotNodeAveragedSummary(uv,HHfiles,pols=['xx','yy'],baseline_groups=[],removeBadAnts=False):
-    baseline_groups = [(14,0,'14m E-W'),(14,-11,'14m NW-SE'),(14,11,'14m SW-NE'),(29,0,'29m E-W'),(29,22,'29m SW-NE'),
-                   (44,0,'44m E-W'),(58.5,0,'58m E-W'),(73,0,'73m E-W'),(87.6,0,'88m E-W'),
-                  (102.3,0,'102m E-W')]
-    fig,axs = plt.subplots(len(pols),2,figsize=(16,16))
-    maxLength = 0
-    cmap = plt.get_cmap('Blues')
-    nodeMedians,lsts,badAnts=get_correlation_baseline_evolutions(uv,HHfiles,bl_type=baseline_groups,removeBadAnts=removeBadAnts)
-    for group in baseline_groups:
-        if group[0] > maxLength:
-            maxLength = group[0]
-    for group in baseline_groups:
-        length = group[0]
-        data = nodeMedians[group[2]]
-        colorInd = float(length/maxLength)
-        for i in range(len(pols)):
-            pol = pols[i]
-            axs[i][0].plot(lsts, data['inter'][pol], color=cmap(colorInd), label=group[2])
-            axs[i][1].plot(lsts, data['intra'][pol], color=cmap(colorInd), label=group[2])
-            axs[i][0].set_ylabel('Median Correlation Metric')
-            axs[i][0].set_title('Internode, Polarization %s' % pol)
-            axs[i][1].set_title('Intranode, Polarization %s' % pol)
-    axs[1][1].legend()
-    axs[1][0].set_xlabel('LST (hours)')
-    axs[1][1].set_xlabel('LST (hours)')
-    return badAnts
     
 def get_correlation_baseline_evolutions(uv,HHfiles,badThresh=0.35,pols=['xx','yy'],bl_type=(14,0,'14m E-W'),
                                         removeBadAnts=False, plotMatrix=True):
@@ -662,3 +599,66 @@ def get_baseline_type(uv,bl_type=(14,0,'14m E-W')):
             if np.abs(disp[2]-bl_type[1])<0.5:
                 return bl
     return None
+
+def generate_nodeDict(uv):
+    antnums = uv.antenna_numbers
+    h = cm_hookup.Hookup()
+    x = h.get_hookup('HH')
+    nodes = {}
+    antDict = {}
+    inclNodes = []
+    for ant in antnums:
+        key = 'HH%i:A' % (ant)
+        n = x[key].get_part_in_hookup_from_type('node')['E<ground'][2]
+        snapLoc = (x[key].hookup['E<ground'][-1].downstream_input_port[-1], ant)
+        snapInput = (x[key].hookup['E<ground'][-2].downstream_input_port[1:], ant)
+        antDict[ant] = {}
+        antDict[ant]['node'] = str(n)
+        antDict[ant]['snapLocs'] = snapLoc
+        antDict[ant]['snapInput'] = snapInput
+        inclNodes.append(n)
+        if n in nodes:
+            nodes[n]['ants'].append(ant)
+            nodes[n]['snapLocs'].append(snapLoc)
+            nodes[n]['snapInput'].append(snapInput)
+        else:
+            nodes[n] = {}
+            nodes[n]['ants'] = [ant]
+            nodes[n]['snapLocs'] = [snapLoc]
+            nodes[n]['snapInput'] = [snapInput]
+    inclNodes = np.unique(inclNodes)
+    return nodes, antDict, inclNodes
+
+def sort_antennas(uv):
+    nodes, antDict, inclNodes = generate_nodeDict(uv)
+    sortedAntennas = []
+    for n in sorted(inclNodes):
+        snappairs = []
+        h = cm_hookup.Hookup()
+        x = h.get_hookup('HH')
+        for ant in nodes[n]['ants']:
+            snappairs.append(antDict[ant]['snapLocs'])
+        snapLocs = {}
+        locs = []
+        for pair in snappairs:
+            ant = pair[1]
+            loc = pair[0]
+            locs.append(loc)
+            if loc in snapLocs:
+                snapLocs[loc].append(ant)
+            else:
+                snapLocs[loc] = [ant]
+        locs = sorted(np.unique(locs))
+        ants_sorted = []
+        for loc in locs:
+            ants = snapLocs[loc]
+            inputpairs = []
+            for ant in ants:
+                key = 'HH%i:A' % (ant)
+                pair = (int(x[key].hookup['E<ground'][-2].downstream_input_port[1:]), ant)
+                inputpairs.append(pair)
+            for _,a in sorted(inputpairs):
+                ants_sorted.append(a)
+        for ant in ants_sorted:
+            sortedAntennas.append(ant)
+    return sortedAntennas
