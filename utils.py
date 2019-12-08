@@ -16,6 +16,7 @@ import warnings
 import copy
 import utils
 from hera_mc import cm_hookup
+import math
 warnings.filterwarnings('ignore')
 
 def load_data(data_path):
@@ -490,52 +491,93 @@ def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnt
             fig.suptitle('Visibility spectra for %s baselines (JD: %i)' % (orientation,JD))
             fig.subplots_adjust(top=.94,wspace=0.05)
 
-def plot_correlation_matrices(uvd1,HHfiles,badThresh=0.35,pols=['xx','yy']):
-    files, lsts = get_hourly_files(uvd1, HHfiles)
-    nodeDict, antDict, inclNodes = generate_nodeDict(uvd1)
+def plotNodeAveragedSummary(uv,HHfiles,pols=['xx','yy'],baseline_groups=[],removeBadAnts=False):
+    baseline_groups = [(14,0,'14m E-W'),(14,-11,'14m NW-SE'),(14,11,'14m SW-NE'),(29,0,'29m E-W'),(29,22,'29m SW-NE'),
+                   (44,0,'44m E-W'),(58.5,0,'58m E-W'),(73,0,'73m E-W'),(87.6,0,'88m E-W'),
+                  (102.3,0,'102m E-W')]
+    fig,axs = plt.subplots(len(pols),2,figsize=(16,16))
+    maxLength = 0
+    cmap = plt.get_cmap('Blues')
+    nodeMedians,lsts,badAnts=get_correlation_baseline_evolutions(uv,HHfiles,bl_type=baseline_groups,removeBadAnts=removeBadAnts)
+    for group in baseline_groups:
+        if group[0] > maxLength:
+            maxLength = group[0]
+    for group in baseline_groups:
+        length = group[0]
+        data = nodeMedians[group[2]]
+        colorInd = float(length/maxLength)
+        for i in range(len(pols)):
+            pol = pols[i]
+            axs[i][0].plot(lsts, data['inter'][pol], color=cmap(colorInd), label=group[2])
+            axs[i][1].plot(lsts, data['intra'][pol], color=cmap(colorInd), label=group[2])
+            axs[i][0].set_ylabel('Median Correlation Metric')
+            axs[i][0].set_title('Internode, Polarization %s' % pol)
+            axs[i][1].set_title('Intranode, Polarization %s' % pol)
+    axs[1][1].legend()
+    axs[1][0].set_xlabel('LST (hours)')
+    axs[1][1].set_xlabel('LST (hours)')
+    return badAnts
+    
+def get_correlation_baseline_evolutions(uv,HHfiles,badThresh=0.35,pols=['xx','yy'],bl_type=(14,0,'14m E-W'),
+                                        removeBadAnts=False, plotMatrix=True):
+    files, lsts = get_hourly_files(uv, HHfiles)
+    nTimes = len(files)
+    plotTimes = [0,nTimes-1,nTimes//2]
+    nodeDict, antDict, inclNodes = generate_nodeDict(uv)
+    JD = math.floor(uv.time_array[0])
     bad_antennas = []
-    corrSummary = generateDataTable(uvd1)
-    for file in files:
+    corrSummary = generateDataTable(uv)
+    result = {}
+    for f in range(nTimes):
+        file = files[f]
         sm = UVData()
         df = UVData()
         sm.read_uvh5(file)
         df.read_uvh5('%s.diff%s' % (file[0:-5],file[-5:]))
         matrix, badAnts = calcEvenOddAmpMatrix(sm,df,nodes='auto',badThresh=badThresh)
-        nodeInfo = {
-            'inter' : getInternodeMedians(sm,matrix),
-            'intra' : getIntranodeMedians(sm,matrix)
-        }
-        for node in nodeDict:
+        if plotMatrix is True and f in plotTimes:
+            plotCorrMatrix(sm, matrix, nodes='auto')
+        for group in bl_type:
+            medians = {
+                'inter' : {},
+                'intra' : {}
+                }
             for pol in pols:
-                corrSummary[node][pol]['inter'].append(nodeInfo['inter'][node][pol])
-                corrSummary[node][pol]['intra'].append(nodeInfo['intra'][node][pol])
-        for ant in badAnts:
-            if ant not in bad_antennas:
-                bad_antennas.append(ant)
-        plotCorrMatrix(sm, matrix, nodes='auto')
-    plotNodeSummary(corrSummary, nodeDict, lsts)
-    return bad_antennas
-
-def plotNodeSummary(data, nodeDict, lsts, pols=['xx','yy']):
-    fig,axs = plt.subplots(1,2,figsize=(16,8))
-    cmap = plt.get_cmap('Paired')
-    for n in range(len(nodeDict)):
-        node = list(nodeDict.keys())[n]
-        p=0
-        for pol in pols:
-            axs[0].plot(lsts,data[node][pol]['inter'],color=cmap((n*2)+p),label='Node %s - %s' % (node,pol))
-            axs[1].plot(lsts,data[node][pol]['intra'],color=cmap((n*2)+p),label='Node %s - %s' % (node,pol))
-            p += 1
-    axs[0].set_title('Internodes')
-    axs[0].set_xlabel('LST (hours)')
-    axs[0].legend()
-    axs[0].set_ylim(0.3,1)
-    axs[1].set_title('Intranodes')
-    axs[1].set_xlabel('LST (hours)')
-    axs[1].set_ylabel('Median Correlation Metric')
-    axs[1].legend()
-    axs[1].set_ylim(0.3,1)
-    fig.suptitle('Summary of Correlations by Node')
+                medians['inter'][pol] = []
+                medians['intra'][pol] = []
+            if file == files[0]:
+                result[group[2]] = {
+                    'inter' : {},
+                    'intra' : {}
+                }
+                for pol in pols:
+                    result[group[2]]['inter'][pol] = []
+                    result[group[2]]['intra'][pol] = []
+            bls = get_baseline_type(uv,bl_type=group)
+            baselines = [uv.baseline_to_antnums(bl) for bl in bls]
+            for ant in badAnts:
+                if ant not in bad_antennas:
+                    bad_antennas.append(ant)
+            if removeBadAnts is True:
+                nodeInfo = {
+                    'inter' : getInternodeMedians(sm,matrix,badAnts=bad_antennas, baselines=baselines),
+                    'intra' : getIntranodeMedians(sm,matrix,badAnts=bad_antennas, baselines=baselines)
+                }
+            else:
+                nodeInfo = {
+                    'inter' : getInternodeMedians(sm,matrix, baselines=baselines),
+                    'intra' : getIntranodeMedians(sm,matrix,baselines=baselines)
+                }
+            for node in nodeDict:
+                for pol in pols:
+                    corrSummary[node][pol]['inter'].append(nodeInfo['inter'][node][pol])
+                    corrSummary[node][pol]['intra'].append(nodeInfo['intra'][node][pol])
+                    medians['inter'][pol].append(nodeInfo['inter'][node][pol])
+                    medians['intra'][pol].append(nodeInfo['intra'][node][pol])
+            for pol in pols:
+                result[group[2]]['inter'][pol].append(np.nanmedian(medians['inter'][pol]))
+                result[group[2]]['intra'][pol].append(np.nanmedian(medians['intra'][pol]))
+    return result,lsts,bad_antennas
 
 def generateDataTable(uv,pols=['xx','yy']):
     nodeDict, antDict, inclNodes = generate_nodeDict(uv)
@@ -549,7 +591,7 @@ def generateDataTable(uv,pols=['xx','yy']):
             }
     return dataObject
 
-def getInternodeMedians(uv,data,pols=['xx','yy']):
+def getInternodeMedians(uv,data,pols=['xx','yy'],badAnts=[],baselines='all'):
     nodeDict, antDict, inclNodes = generate_nodeDict(uv)
     antnumsAll=sort_antennas(uv)
     nants = len(antnumsAll)
@@ -568,20 +610,22 @@ def getInternodeMedians(uv,data,pols=['xx','yy']):
             for j in range(nants):
                 ant1 = antnumsAll[i]
                 ant2 = antnumsAll[j]
-                key1 = 'HH%i:A' % (ant1)
-                n1 = x[key1].get_part_in_hookup_from_type('node')['E<ground'][2]
-                key2 = 'HH%i:A' % (ant2)
-                n2 = x[key2].get_part_in_hookup_from_type('node')['E<ground'][2]
-                dat = data[pol][i,j]
-                if n1 != n2:
-                    nodeCorrs[n1][pol].append(dat)
-                    nodeCorrs[n2][pol].append(dat)
+                if ant1 not in badAnts and ant2 not in badAnts and ant1 != ant2:
+                    if baselines=='all' or (ant1,ant2) in baselines:
+                        key1 = 'HH%i:A' % (ant1)
+                        n1 = x[key1].get_part_in_hookup_from_type('node')['E<ground'][2]
+                        key2 = 'HH%i:A' % (ant2)
+                        n2 = x[key2].get_part_in_hookup_from_type('node')['E<ground'][2]
+                        dat = data[pol][i,j]
+                        if n1 != n2:
+                            nodeCorrs[n1][pol].append(dat)
+                            nodeCorrs[n2][pol].append(dat)
     for node in nodeDict:
         for pol in pols:
             nodeMeans[node][pol] = np.nanmedian(nodeCorrs[node][pol])
     return nodeMeans
 
-def getIntranodeMedians(uv, data, pols=['xx','yy']):
+def getIntranodeMedians(uv, data, pols=['xx','yy'],badAnts=[],baselines='all'):
     nodeDict, antDict, inclNodes = generate_nodeDict(uv)
     antnumsAll=sort_antennas(uv)
     nodeMeans = {}
@@ -592,7 +636,25 @@ def getIntranodeMedians(uv, data, pols=['xx','yy']):
             nodeCorrs = []
             for i in range(start,start+len(nodeDict[node]['ants'])):
                 for j in range(start,start+len(nodeDict[node]['ants'])):
-                    nodeCorrs.append(data[pol][i,j])
+                    ant1 = antnumsAll[i]
+                    ant2 = antnumsAll[j]
+                    if ant1 not in badAnts and ant2 not in badAnts and i != j:
+                        if baselines=='all' or (ant1,ant2) in baselines:
+                            nodeCorrs.append(data[pol][i,j])
             nodeMeans[node][pol] = np.nanmedian(nodeCorrs)
         start += len(nodeDict[node]['ants'])
     return nodeMeans
+
+def get_baseline_type(uv,bl_type=(14,0,'14m E-W')):
+    baseline_groups,vec_bin_centers,lengths = uv.get_redundancies(use_antpos=True,include_autos=False)
+    for i in range(len(baseline_groups)):
+        bl = baseline_groups[i]
+        if np.abs(lengths[i]-bl_type[0])<1:
+            ant1 = uv.baseline_to_antnums(bl[0])[0]
+            ant2 = uv.baseline_to_antnums(bl[0])[1]
+            antPos1 = uv.antenna_positions[np.argwhere(uv.antenna_numbers == ant1)]
+            antPos2 = uv.antenna_positions[np.argwhere(uv.antenna_numbers == ant2)]
+            disp = (antPos2-antPos1)[0][0]
+            if np.abs(disp[2]-bl_type[1])<0.5:
+                return bl
+    return None
