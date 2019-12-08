@@ -439,6 +439,8 @@ def get_baseline_groups(uv, bl_groups=[(14,0,'14m E-W'),(29,0,'29m E-W'),(14,-11
     return bls
 
 def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnts=True):
+    fig, axs = plt.subplots(4,2,figsize=(12,16))
+    plt.subplots_adjust(wspace=0.25)
     uv = UVData()
     uv.read_uvh5(file)
     h = cm_hookup.Hookup()
@@ -449,8 +451,8 @@ def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnt
     obstime_start = Time(uv.time_array[0],format='jd',location=loc)
     startTime = obstime_start.sidereal_time('mean').hour
     JD = int(obstime_start.jd)
+    j = 0
     for orientation in baseline_groups:
-        fig,axs = plt.subplots(2,1,figsize=(12,12))
         bls = baseline_groups[orientation]
         for p in range(len(pols)):
             inter=False
@@ -473,23 +475,25 @@ def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnt
                     continue
                 if n1 == n2:
                     if intra is False:
-                        axs[p].plot(freqs,dat,color='blue',label='intranode')
+                        axs[j][p].plot(freqs,dat,color='blue',label='intranode')
                         intra=True
                     else:
-                        axs[p].plot(freqs,dat,color='blue')
+                        axs[j][p].plot(freqs,dat,color='blue')
                 else:
                     if inter is False:
-                        axs[p].plot(freqs,dat,color='red',label='internode')
+                        axs[j][p].plot(freqs,dat,color='red',label='internode')
                         inter=True
                     else:
-                        axs[p].plot(freqs,dat,color='red')
-                axs[p].set_title(pol)    
-                axs[p].set_yscale('log')
-            axs[p].legend(loc='upper right')
-            axs[p].set_xlabel('Frequency (MHz)')
-            axs[p].set_ylabel('log(|Vij|)')
-            fig.suptitle('Visibility spectra for %s baselines (JD: %i)' % (orientation,JD))
-            fig.subplots_adjust(top=.94,wspace=0.05)
+                        axs[j][p].plot(freqs,dat,color='red')
+                axs[j][p].set_yscale('log')
+                axs[j][p].set_title('%s: %s pol' % (orientation,pols[p]))
+                if j == 0:
+                    axs[0][0].legend()
+                    axs[3][p].set_xlabel('Frequency (MHz)')
+        axs[j][0].set_ylabel('log(|Vij|)')
+        j += 1
+    fig.suptitle('Visibility spectra (JD: %i)' % (JD))
+    fig.subplots_adjust(top=.94,wspace=0.05)
 
 def plotNodeAveragedSummary(uv,HHfiles,pols=['xx','yy'],baseline_groups=[],removeBadAnts=False):
     baseline_groups = [(14,0,'14m E-W'),(14,-11,'14m NW-SE'),(14,11,'14m SW-NE'),(29,0,'29m E-W'),(29,22,'29m SW-NE'),
