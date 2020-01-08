@@ -93,7 +93,7 @@ def plot_autos(uvdx, uvdy, uvd1, uvd2):
     utc = Time(jd, format='jd').datetime
 
     xlim = (np.min(freqs), np.max(freqs))
-    ylim = (60, 90)
+    ylim = (0, 90)
 
     fig, axes = plt.subplots(Yside, Nside, figsize=(Yside*2, Nside*2), dpi=75)
 
