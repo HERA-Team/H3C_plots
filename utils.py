@@ -19,8 +19,8 @@ from hera_mc import cm_hookup
 warnings.filterwarnings('ignore')
 
 def load_data(data_path):
-    HHfiles = sorted(glob.glob("{0}/zen.*.*.HH.uvh5".format(data_path)))
-    difffiles = sorted(glob.glob("{0}/zen.*.*.HH.diff.uvh5".format(data_path)))
+    HHfiles = sorted(glob.glob("{0}/zen.*.*.uvh5".format(data_path)))
+    difffiles = sorted(glob.glob("{0}/zen.*.*.diff.uvh5".format(data_path)))
     Nfiles = len(HHfiles)
     hhfile_bases = map(os.path.basename, HHfiles)
     hhdifffile_bases = map(os.path.basename, difffiles)
