@@ -41,12 +41,12 @@ remove_staging_notes () {
 }
 
 remove_staging_notes $staging_dir
-search="{\"session-id-is-exactly\": $sessid, \"name-matches\": \"%.HH.uvh5\"}"
+search="{\"session-id-is-exactly\": $sessid, \"name-matches\": \"%.uvh5\"}"
 librarian stage-files --wait $librarian_conn_name "$staging_dir" "$search"
 
-remove_staging_notes $staging_dir
-search="{\"session-id-is-exactly\": $sessid, \"name-matches\": \"%.HH.diff.uvh5\"}"
-librarian stage-files --wait $librarian_conn_name "$staging_dir" "$search"
+#remove_staging_notes $staging_dir
+#search="{\"session-id-is-exactly\": $sessid, \"name-matches\": \"%.diff.uvh5\"}"
+#librarian stage-files --wait $librarian_conn_name "$staging_dir" "$search"
 
 remove_staging_notes $staging_dir
 search="{\"session-id-is-exactly\": $sessid, \"name-matches\": \"%.json\"}"

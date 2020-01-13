@@ -36,7 +36,8 @@ connection_name = 'local'
 search = '''
 {
    "no-file-has-event": "nightlynb.processed",
-   "age-less-than": 14
+   "age-less-than": 14,
+   "session-id-is-exactly": 1262196460
 }'''
 
 def main():
