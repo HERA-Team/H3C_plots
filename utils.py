@@ -19,7 +19,7 @@ from hera_mc import cm_hookup
 warnings.filterwarnings('ignore')
 
 def load_data(data_path):
-    HHfiles = sorted(glob.glob("{0}/zen.*.*.uvh5".format(data_path)))
+    HHfiles = [x for x in sorted(glob.glob("{0}/zen.*.*.uvh5".format(data_path))) if 'diff' not in x] 
     difffiles = sorted(glob.glob("{0}/zen.*.*.diff.uvh5".format(data_path)))
     Nfiles = len(HHfiles)
     hhfile_bases = map(os.path.basename, HHfiles)
@@ -93,7 +93,7 @@ def plot_autos(uvdx, uvdy, uvd1, uvd2):
     utc = Time(jd, format='jd').datetime
 
     xlim = (np.min(freqs), np.max(freqs))
-    ylim = (0, 90)
+    ylim = (60, 90)
 
     fig, axes = plt.subplots(Yside, Nside, figsize=(Yside*2, Nside*2), dpi=75)
 
