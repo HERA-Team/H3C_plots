@@ -427,7 +427,8 @@ def get_hourly_files(uv, HHfiles):
     use_lsts = []
     use_files = []
     for file in HHfiles:
-        jd = float(file[-21:-8])
+        filename = file.split('zen.',1)[1]
+        jd = float(filename[0:-5])
         loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
         t = Time(jd,format='jd',location=loc)
         lst = round(t.sidereal_time('mean').hour,2)
