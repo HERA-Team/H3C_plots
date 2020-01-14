@@ -362,8 +362,8 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto', badThresh=0.5):
             for j in range(len(antnumsAll)):
                 ant1 = antnumsAll[i]
                 ant2 = antnumsAll[j]
-                s = sm.get_data(ant1,ant2,pol)
-                d = df.get_data(ant1,ant2,pol)
+                s = sm.get_data(ant1,ant2,pol)[:,200:]
+                d = df.get_data(ant1,ant2,pol)[:,200:]
                 even = (s + d)/2
                 even = np.divide(even,np.abs(even))
                 odd = (s - d)/2
@@ -401,7 +401,7 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
         axs[p].xaxis.set_ticks_position('top')
         axs[p].set_title('polarization: ' + dirs[p] + '\n')
         n=0
-        for node in nodeDict:
+        for node in sorted(inclNodes):
             n += len(nodeDict[node]['ants'])
             axs[p].axhline(len(antnumsAll)-n+.5,lw=4)
             axs[p].axvline(n+.5,lw=4)
@@ -466,6 +466,7 @@ def get_correlation_baseline_evolutions(uv,HHfiles,badThresh=0.35,pols=['xx','yy
     nTimes = len(files)
     plotTimes = [0,nTimes-1,nTimes//2]
     nodeDict, antDict, inclNodes = generate_nodeDict(uv)
+    print(nodeDict)
     JD = math.floor(uv.time_array[0])
     bad_antennas = []
     corrSummary = generateDataTable(uv)
