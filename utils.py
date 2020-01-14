@@ -466,7 +466,6 @@ def get_correlation_baseline_evolutions(uv,HHfiles,badThresh=0.35,pols=['xx','yy
     nTimes = len(files)
     plotTimes = [0,nTimes-1,nTimes//2]
     nodeDict, antDict, inclNodes = generate_nodeDict(uv)
-    print(nodeDict)
     JD = math.floor(uv.time_array[0])
     bad_antennas = []
     corrSummary = generateDataTable(uv)
