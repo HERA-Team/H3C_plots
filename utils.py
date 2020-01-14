@@ -312,6 +312,7 @@ def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnt
                     axs[0][0].legend()
                     axs[3][p].set_xlabel('Frequency (MHz)')
         axs[j][0].set_ylabel('log(|Vij|)')
+        axs[j][1].set_yticks([])
         j += 1
     fig.suptitle('Visibility spectra (JD: %i)' % (JD))
     fig.subplots_adjust(top=.94,wspace=0.05)
@@ -323,7 +324,7 @@ def plot_antenna_positions(uv, badAnts=[]):
     cmap = plt.get_cmap('tab20')
     n = 0
     labelled = []
-    for node in nodes:
+    for node in sorted(inclNodes):
         color = cmap(round(20/N*n))
         n += 1
         ants = nodes[node]['ants']
@@ -401,7 +402,7 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
         axs[p].xaxis.set_ticks_position('top')
         axs[p].set_title('polarization: ' + dirs[p] + '\n')
         n=0
-        for node in nodeDict:
+        for node in sorted(inclNodes):
             n += len(nodeDict[node]['ants'])
             axs[p].axhline(len(antnumsAll)-n+.5,lw=4)
             axs[p].axvline(n+.5,lw=4)
