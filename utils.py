@@ -362,8 +362,8 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto', badThresh=0.5):
             for j in range(len(antnumsAll)):
                 ant1 = antnumsAll[i]
                 ant2 = antnumsAll[j]
-                s = sm.get_data(ant1,ant2,pol)[:,200:]
-                d = df.get_data(ant1,ant2,pol)[:,200:]
+                s = sm.get_data(ant1,ant2,pol)
+                d = df.get_data(ant1,ant2,pol)
                 even = (s + d)/2
                 even = np.divide(even,np.abs(even))
                 odd = (s - d)/2
