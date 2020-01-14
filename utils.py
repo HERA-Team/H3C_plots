@@ -312,6 +312,7 @@ def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnt
                     axs[0][0].legend()
                     axs[3][p].set_xlabel('Frequency (MHz)')
         axs[j][0].set_ylabel('log(|Vij|)')
+        axs[j][1].set_yticks([])
         j += 1
     fig.suptitle('Visibility spectra (JD: %i)' % (JD))
     fig.subplots_adjust(top=.94,wspace=0.05)
