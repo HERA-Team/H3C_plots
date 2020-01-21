@@ -409,7 +409,7 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
             axs[p].text(n-len(nodeDict[node]['ants'])/2,-.4,node)
         axs[p].text(.42,-.07,'Node Number',transform=axs[p].transAxes)
     n=0
-    for node in nodeDict:
+    for node in sorted(inclNodes):
         n += len(nodeDict[node]['ants'])
         axs[1].text(nantsTotal+1,nantsTotal-n+len(nodeDict[node]['ants'])/2,node)
     axs[1].text(1.05,0.4,'Node Number',rotation=270,transform=axs[1].transAxes)
