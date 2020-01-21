@@ -497,6 +497,8 @@ def get_correlation_baseline_evolutions(uv,HHfiles,badThresh=0.35,pols=['xx','yy
                     result[group[2]]['inter'][pol] = []
                     result[group[2]]['intra'][pol] = []
             bls = get_baseline_type(uv,bl_type=group)
+            if bls == None:
+                continue
             baselines = [uv.baseline_to_antnums(bl) for bl in bls]
             for ant in badAnts:
                 if ant not in bad_antennas:
