@@ -409,7 +409,7 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
             axs[p].text(n-len(nodeDict[node]['ants'])/2,-.4,node)
         axs[p].text(.42,-.07,'Node Number',transform=axs[p].transAxes)
     n=0
-    for node in nodeDict:
+    for node in sorted(inclNodes):
         n += len(nodeDict[node]['ants'])
         axs[1].text(nantsTotal+1,nantsTotal-n+len(nodeDict[node]['ants'])/2,node)
     axs[1].text(1.05,0.4,'Node Number',rotation=270,transform=axs[1].transAxes)
@@ -497,6 +497,8 @@ def get_correlation_baseline_evolutions(uv,HHfiles,badThresh=0.35,pols=['xx','yy
                     result[group[2]]['inter'][pol] = []
                     result[group[2]]['intra'][pol] = []
             bls = get_baseline_type(uv,bl_type=group)
+            if bls == None:
+                continue
             baselines = [uv.baseline_to_antnums(bl) for bl in bls]
             for ant in badAnts:
                 if ant not in bad_antennas:
