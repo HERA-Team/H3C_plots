@@ -558,9 +558,9 @@ def getInternodeMedians(uv,data,pols=['xx','yy'],badAnts=[],baselines='all'):
                 if ant1 not in badAnts and ant2 not in badAnts and ant1 != ant2:
                     if baselines=='all' or (ant1,ant2) in baselines:
                         key1 = 'HH%i:A' % (ant1)
-                        n1 = x[key1].get_part_in_hookup_from_type('node')['E<ground'][2]
+                        n1 = x[key1].get_part_from_type('node')['E<ground'][2]
                         key2 = 'HH%i:A' % (ant2)
-                        n2 = x[key2].get_part_in_hookup_from_type('node')['E<ground'][2]
+                        n2 = x[key2].get_part_from_type('node')['E<ground'][2]
                         dat = data[pol][i,j]
                         if n1 != n2:
                             nodeCorrs[n1][pol].append(dat)
@@ -613,7 +613,7 @@ def generate_nodeDict(uv):
     inclNodes = []
     for ant in antnums:
         key = 'HH%i:A' % (ant)
-        n = x[key].get_part_in_hookup_from_type('node')['E<ground'][2]
+        n = x[key].get_part_from_type('node')['E<ground'][2]
         snapLoc = (x[key].hookup['E<ground'][-1].downstream_input_port[-1], ant)
         snapInput = (x[key].hookup['E<ground'][-2].downstream_input_port[1:], ant)
         antDict[ant] = {}
