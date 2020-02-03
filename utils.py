@@ -284,9 +284,9 @@ def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnt
                 ant1 = ants[0]
                 ant2 = ants[1]
                 key1 = 'HH%i:A' % (ant1)
-                n1 = x[key1].get_part_in_hookup_from_type('node')['E<ground'][2]
+                n1 = x[key1].get_part_from_type('node')['E<ground'][2]
                 key2 = 'HH%i:A' % (ant2)
-                n2 = x[key2].get_part_in_hookup_from_type('node')['E<ground'][2]
+                n2 = x[key2].get_part_from_type('node')['E<ground'][2]
                 dat = np.mean(np.abs(uv.get_data(ant1,ant2,pol)),0)
                 auto1 = np.mean(np.abs(uv.get_data(ant1,ant1,pol)),0)
                 auto2 = np.mean(np.abs(uv.get_data(ant2,ant2,pol)),0)
