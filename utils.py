@@ -247,6 +247,8 @@ def plotNodeAveragedSummary(uv,HHfiles,pols=['xx','yy'],baseline_groups=[],remov
         length = group[0]
         data = nodeMedians[group[2]]
         colorInd = float(length/maxLength)
+        if len(data['inter']['xx']) == 0:
+            continue
         for i in range(len(pols)):
             pol = pols[i]
             axs[i][0].plot(lsts, data['inter'][pol], color=cmap(colorInd), label=group[2])
