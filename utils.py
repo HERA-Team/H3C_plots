@@ -19,7 +19,7 @@ from hera_mc import cm_hookup
 import math
 warnings.filterwarnings('ignore')
 
-def load_data(data_path):
+def load_data(data_path,JD):
     HHfiles = sorted(glob.glob("{0}/zen.{1}.*.sum.uvh5".format(data_path,JD)))
     difffiles = sorted(glob.glob("{0}/zen.{1}.*.diff.uvh5".format(data_path,JD)))
     Nfiles = len(HHfiles)
