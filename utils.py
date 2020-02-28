@@ -829,7 +829,6 @@ def plot_ds(uvd, uvd_diff, _data_sq_cleaned, data_rs, skip_wgts=0.2):
             plt.ylabel(r'$|\tilde{V}(\tau)|$ in dB')
             for yl in range(-50,0,10):
                 plt.axhline(y=yl, color='k', lw=0.5, alpha=0.1)
-#             plt.grid(axis='y')
             if(j == 0):
                 plt.annotate('node {} (snap {})'.format(antDict[ant]['node'],antDict[ant]['snapLocs'][0]), xy=(0.04,0.930), xycoords='axes fraction')
 
