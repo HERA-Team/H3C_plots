@@ -21,9 +21,9 @@ from uvtools import dspec
 import hera_qm
 warnings.filterwarnings('ignore')
 
-def load_data(data_path):
-    HHfiles = [x for x in sorted(glob.glob("{0}/zen.*.*.uvh5".format(data_path))) if 'diff' not in x] 
-    difffiles = sorted(glob.glob("{0}/zen.*.*.diff.uvh5".format(data_path)))
+def load_data(data_path,JD):
+    HHfiles = sorted(glob.glob("{0}/zen.{1}.*.sum.uvh5".format(data_path,JD)))
+    difffiles = sorted(glob.glob("{0}/zen.{1}.*.diff.uvh5".format(data_path,JD)))
     Nfiles = len(HHfiles)
     hhfile_bases = map(os.path.basename, HHfiles)
     hhdifffile_bases = map(os.path.basename, difffiles)
