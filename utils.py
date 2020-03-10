@@ -232,14 +232,14 @@ def plot_closure(uvd, triad_length, pol):
     plt.imshow(closure_ph, aspect='auto', rasterized=True,
                            interpolation='nearest', cmap = 'twilight')
     
-def plotNodeAveragedSummary(uv,HHfiles,pols=['xx','yy'],baseline_groups=[],removeBadAnts=False):
+def plotNodeAveragedSummary(uv,HHfiles,jd,pols=['xx','yy'],baseline_groups=[],removeBadAnts=False):
     baseline_groups = [(14,0,'14m E-W'),(14,-11,'14m NW-SE'),(14,11,'14m SW-NE'),(29,0,'29m E-W'),(29,22,'29m SW-NE'),
                    (44,0,'44m E-W'),(58.5,0,'58m E-W'),(73,0,'73m E-W'),(87.6,0,'88m E-W'),
                   (102.3,0,'102m E-W')]
     fig,axs = plt.subplots(len(pols),2,figsize=(16,16))
     maxLength = 0
     cmap = plt.get_cmap('Blues')
-    nodeMedians,lsts,badAnts=get_correlation_baseline_evolutions(uv,HHfiles,bl_type=baseline_groups,removeBadAnts=removeBadAnts)
+    nodeMedians,lsts,badAnts=get_correlation_baseline_evolutions(uv,HHfiles,jd,bl_type=baseline_groups,removeBadAnts=removeBadAnts)
     for group in baseline_groups:
         if group[0] > maxLength:
             maxLength = group[0]
@@ -261,7 +261,7 @@ def plotNodeAveragedSummary(uv,HHfiles,pols=['xx','yy'],baseline_groups=[],remov
     axs[1][1].set_xlabel('LST (hours)')
     return badAnts
     
-def plotVisibilitySpectra(file,badAnts=[],length=29,pols=['xx','yy'], clipLowAnts=True):
+def plotVisibilitySpectra(file,jd,badAnts=[],length=29,pols=['xx','yy'], clipLowAnts=True):
     fig, axs = plt.subplots(4,2,figsize=(12,16))
     plt.subplots_adjust(wspace=0.25)
     uv = UVData()
@@ -426,12 +426,10 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
     fig.suptitle('Correlation Matrix - JD: %s, LST: %.0fh' % (str(jd),np.round(lst,0)))
     fig.subplots_adjust(top=1.32,wspace=0.05)
     
-def get_hourly_files(uv, HHfiles):
+def get_hourly_files(uv, HHfiles, jd):
     use_lsts = []
     use_files = []
     for file in HHfiles:
-        filename = file.split('zen.',1)[1]
-        jd = float(filename[0:-5])
         loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
         t = Time(jd,format='jd',location=loc)
         lst = round(t.sidereal_time('mean').hour,2)
@@ -463,9 +461,9 @@ def get_baseline_groups(uv, bl_groups=[(14,0,'14m E-W'),(29,0,'29m E-W'),(14,-11
 
 
     
-def get_correlation_baseline_evolutions(uv,HHfiles,badThresh=0.35,pols=['xx','yy'],bl_type=(14,0,'14m E-W'),
+def get_correlation_baseline_evolutions(uv,HHfiles,jd,badThresh=0.35,pols=['xx','yy'],bl_type=(14,0,'14m E-W'),
                                         removeBadAnts=False, plotMatrix=True):
-    files, lsts = get_hourly_files(uv, HHfiles)
+    files, lsts = get_hourly_files(uv, HHfiles, jd)
     nTimes = len(files)
     plotTimes = [0,nTimes-1,nTimes//2]
     nodeDict, antDict, inclNodes = generate_nodeDict(uv)
