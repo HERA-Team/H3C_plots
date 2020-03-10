@@ -39,7 +39,7 @@ def load_data(data_path,JD):
     # Load data
     uvd_hh = UVData()
 
-    uvd_hh.read_uvh5(hhfile1)
+    uvd_hh.read(hhfile1)
     uvd_xx1 = uvd_hh.select(polarizations = -5, inplace = False)
     uvd_xx1.ants = np.unique(np.concatenate([uvd_xx1.ant_1_array, uvd_xx1.ant_2_array]))
     # -5: 'xx', -6: 'yy', -7: 'xy', -8: 'yx'
@@ -47,20 +47,19 @@ def load_data(data_path,JD):
 
     uvd_hh = UVData()
 
-    uvd_hh.read_uvh5(hhfile1) 
+    uvd_hh.read(hhfile1) 
     uvd_yy1 = uvd_hh.select(polarizations = -6, inplace = False)
     uvd_yy1.ants = np.unique(np.concatenate([uvd_yy1.ant_1_array, uvd_yy1.ant_2_array]))
 
     #first file 
     uvdfirst = UVData()
-    uvdfirst.read_uvh5(HHfiles[0:1], polarizations=[-5, -6])
+    uvdfirst.read(HHfiles[0:1], polarizations=[-5, -6])
 
     #last file
     uvdlast = UVData()
-    uvdlast.read_uvh5(HHfiles[-1], polarizations=[-5, -6])
+    uvdlast.read(HHfiles[-1], polarizations=[-5, -6])
    
     return HHfiles, difffiles, uvd_xx1, uvd_yy1, uvdfirst, uvdlast
-    
 
 def plot_autos(uvdx, uvdy, uvd1, uvd2):
     ants = uvdx.get_ants()
@@ -125,6 +124,7 @@ def plot_wfs(uvd, pol):
     freqs = (uvd.freq_array[0])*10**(-6)
     times = uvd.time_array
     lsts = uvd.lst_array
+    print(lsts)
     
     Nants = len(ants)
     Nside = int(np.ceil(np.sqrt(Nants)))
