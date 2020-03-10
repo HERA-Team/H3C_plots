@@ -123,8 +123,7 @@ def plot_wfs(uvd, pol):
     ants = uvd.get_ants()
     freqs = (uvd.freq_array[0])*10**(-6)
     times = uvd.time_array
-    lsts = uvd.lst_array
-    print(lsts)
+    lsts = uvd.lst_array*3.819719
     
     Nants = len(ants)
     Nside = int(np.ceil(np.sqrt(Nants)))
