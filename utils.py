@@ -478,7 +478,7 @@ def get_correlation_baseline_evolutions(uv,HHfiles,badThresh=0.35,pols=['xx','yy
         sm = UVData()
         df = UVData()
         sm.read_uvh5(file)
-        df.read_uvh5('%s.diff%s' % (file[0:-5],file[-5:]))
+        df.read_uvh5('%sdiff%s' % (file[0:-8],file[-5:]))
         matrix, badAnts = calcEvenOddAmpMatrix(sm,df,nodes='auto',badThresh=badThresh)
         if plotMatrix is True and f in plotTimes:
             plotCorrMatrix(sm, matrix, nodes='auto')
