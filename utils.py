@@ -615,7 +615,7 @@ def generate_nodeDict(uv):
     inclNodes = []
     for ant in antnums:
         key = 'HH%i:A' % (ant)
-        n = x[key].get_part_from_type('node')['E<ground'][2]
+        n = x[key].get_part_from_type('node')['E<ground'][1:]
         snapLoc = (x[key].hookup['E<ground'][-1].downstream_input_port[-1], ant)
         snapInput = (x[key].hookup['E<ground'][-2].downstream_input_port[1:], ant)
         antDict[ant] = {}
