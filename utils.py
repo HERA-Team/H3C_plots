@@ -348,6 +348,14 @@ def plot_antenna_positions(uv, badAnts=[]):
     plt.legend(title='Node Number',bbox_to_anchor=(1.15,0.9),markerscale=0.5,labelspacing=1.5)
     plt.title('Antenna Locations')
     
+def plot_lst_coverage(uvd):
+    lsts = uvd.lst_array*3.819719
+    fig = plt.figure(figsize=(12,10))
+    plt.hist(lsts, bins=int(len(np.unique(lsts))/20), alpha=0.7)
+    plt.xlabel('LST (hours)')
+    plt.ylabel('Count')
+    plt.title('LST Coverage')
+    
 def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto', badThresh=0.5):
     if sm.time_array[0] != df.time_array[0]:
         print('FATAL ERROR: Sum and diff files are not from the same observation!')
@@ -476,8 +484,8 @@ def get_correlation_baseline_evolutions(uv,HHfiles,jd,badThresh=0.35,pols=['xx',
         file = files[f]
         sm = UVData()
         df = UVData()
-        sm.read_uvh5(file)
-        df.read_uvh5('%sdiff%s' % (file[0:-8],file[-5:]))
+        sm.read(file)
+        df.read('%sdiff%s' % (file[0:-8],file[-5:]))
         matrix, badAnts = calcEvenOddAmpMatrix(sm,df,nodes='auto',badThresh=badThresh)
         if plotMatrix is True and f in plotTimes:
             plotCorrMatrix(sm, matrix, nodes='auto')
@@ -671,19 +679,19 @@ def sort_antennas(uv):
 def clean_ds(HHfiles, difffiles, bls, area=1000., tol=1e-9, skip_wgts=0.2): 
     
     uvd_ds = UVData()
-    uvd_ds.read_uvh5(HHfiles[0], bls=bls[0], polarizations=-5, keep_all_metadata=False)
+    uvd_ds.read(HHfiles[0], bls=bls[0], polarizations=-5, keep_all_metadata=False)
     times = np.unique(uvd_ds.time_array)
     Nfiles = int(1./((times[-1]-times[0])*24.))
     try:
-        uvd_ds.read_uvh5(HHfiles[:Nfiles], bls=bls, polarizations=[-5,-6], keep_all_metadata=False)
+        uvd_ds.read(HHfiles[:Nfiles], bls=bls, polarizations=[-5,-6], keep_all_metadata=False)
         uvd_ds.flag_array = np.zeros_like(uvd_ds.flag_array)
         uvd_diff = UVData()
-        uvd_diff.read_uvh5(difffiles[:Nfiles], bls=bls, polarizations=[-5,-6], keep_all_metadata=False)
+        uvd_diff.read(difffiles[:Nfiles], bls=bls, polarizations=[-5,-6], keep_all_metadata=False)
     except:
-        uvd_ds.read_uvh5(HHfiles[len(HHfiles)//2:len(HHfiles)//2+Nfiles], bls=bls, polarizations=[-5,-6], keep_all_metadata=False)
+        uvd_ds.read(HHfiles[len(HHfiles)//2:len(HHfiles)//2+Nfiles], bls=bls, polarizations=[-5,-6], keep_all_metadata=False)
         uvd_ds.flag_array = np.zeros_like(uvd_ds.flag_array)
         uvd_diff = UVData()
-        uvd_diff.read_uvh5(difffiles[len(HHfiles)//2:len(HHfiles)//2+Nfiles], bls=bls, polarizations=[-5,-6], keep_all_metadata=False)
+        uvd_diff.read(difffiles[len(HHfiles)//2:len(HHfiles)//2+Nfiles], bls=bls, polarizations=[-5,-6], keep_all_metadata=False)
     
     uvf_m, uvf_fws = hera_qm.xrfi.xrfi_h1c_pipe(uvd_ds, sig_adj=1, sig_init=3)
     hera_qm.xrfi.flag_apply(uvf_m, uvd_ds)
