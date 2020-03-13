@@ -39,7 +39,7 @@ def load_data(data_path,JD):
     # Load data
     uvd_hh = UVData()
 
-    uvd_hh.read(hhfile1)
+    uvd_hh.read(hhfile1, skip_bad_files=True)
     uvd_xx1 = uvd_hh.select(polarizations = -5, inplace = False)
     uvd_xx1.ants = np.unique(np.concatenate([uvd_xx1.ant_1_array, uvd_xx1.ant_2_array]))
     # -5: 'xx', -6: 'yy', -7: 'xy', -8: 'yx'
@@ -47,17 +47,17 @@ def load_data(data_path,JD):
 
     uvd_hh = UVData()
 
-    uvd_hh.read(hhfile1) 
+    uvd_hh.read(hhfile1, skip_bad_files=True) 
     uvd_yy1 = uvd_hh.select(polarizations = -6, inplace = False)
     uvd_yy1.ants = np.unique(np.concatenate([uvd_yy1.ant_1_array, uvd_yy1.ant_2_array]))
 
     #first file 
     uvdfirst = UVData()
-    uvdfirst.read(HHfiles[0:1], polarizations=[-5, -6])
+    uvdfirst.read(HHfiles[0:1], polarizations=[-5, -6], skip_bad_files=True)
 
     #last file
     uvdlast = UVData()
-    uvdlast.read(HHfiles[-1], polarizations=[-5, -6])
+    uvdlast.read(HHfiles[-1], polarizations=[-5, -6], skip_bad_files=True)
    
     return HHfiles, difffiles, uvd_xx1, uvd_yy1, uvdfirst, uvdlast
 
@@ -484,8 +484,11 @@ def get_correlation_baseline_evolutions(uv,HHfiles,jd,badThresh=0.35,pols=['xx',
         file = files[f]
         sm = UVData()
         df = UVData()
-        sm.read(file)
-        df.read('%sdiff%s' % (file[0:-8],file[-5:]))
+        try:
+            sm.read(file, skip_bad_files=True)
+            df.read('%sdiff%s' % (file[0:-8],file[-5:]), skip_bad_files=True)
+        except:
+            continue
         matrix, badAnts = calcEvenOddAmpMatrix(sm,df,nodes='auto',badThresh=badThresh)
         if plotMatrix is True and f in plotTimes:
             plotCorrMatrix(sm, matrix, nodes='auto')
