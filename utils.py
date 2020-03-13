@@ -1064,3 +1064,128 @@ def plot_wfds_cr(uvd, _data_sq, pol):
     cb = fig.colorbar(im, cax=cbar_ax)
     cb.set_label('dB')
     fig.show()
+def plot_metric(metrics, ants=None, antpols=None, title='', ylabel='Modified z-Score', xlabel=''):
+    '''Helper function for quickly plotting an individual antenna metric.'''
+
+    if ants is None:
+        ants = list(set([key[0] for key in metrics.keys()]))
+    if antpols is None:
+        antpols = list(set([key[1] for key in metrics.keys()]))
+    for antpol in antpols:
+        for i,ant in enumerate(ants):
+            metric = 0
+            if (ant,antpol) in metrics:
+                metric = metrics[(ant,antpol)]
+            plt.plot(i,metric,'.')
+            plt.annotate(str(ant)+antpol,xy=(i,metrics[(ant,antpol)]))
+        plt.gca().set_prop_cycle(None)
+    plt.title(title)
+    plt.ylabel(ylabel)
+    plt.xlabel(xlabel)
+def show_metric(ant_metrics, antmetfiles, ants=None, antpols=None, title='', ylabel='Modified z-Score', xlabel=''):
+    print("Ant Metrics for {}".format(antmetfiles[1]))
+    plt.figure()
+    plot_metric(ant_metrics['final_mod_z_scores']['meanVij'],
+            title = 'Mean Vij Modified z-Score')
+
+    plt.figure()
+    plot_metric(ant_metrics['final_mod_z_scores']['redCorr'],
+            title = 'Redundant Visibility Correlation Modified z-Score')
+
+    plt.figure()
+    plot_metric(ant_metrics['final_mod_z_scores']['meanVijXPol'], antpols=['n'],
+            title = 'Modified z-score of (Vxy+Vyx)/(Vxx+Vyy)')
+
+    plt.figure()
+    plot_metric(ant_metrics['final_mod_z_scores']['redCorrXPol'], antpols=['n'],
+            title = 'Modified z-Score of Power Correlation Ratio Cross/Same')
+    plt.figure()
+    plot_metric(ant_metrics['final_mod_z_scores']['redCorrXPol'], antpols=['e'],
+            title = 'Modified z-Score of Power Correlation Ratio Cross/Same')
+
+def all_ant_mets(antmetfiles,HHfiles):
+    file = HHfiles[0]
+    uvd_hh = UVData()
+    uvd_hh.read_uvh5(file)
+    uvdx = uvd_hh.select(polarizations = -5, inplace = False)
+    uvdx.ants = np.unique(np.concatenate([uvdx.ant_1_array, uvdx.ant_2_array]))
+    ants = uvdx.get_ants()
+    times = uvd_hh.time_array
+    Nants = len(ants)
+    jd_start = np.floor(times.min())
+    antfinfiles = []
+    for i,file in enumerate(antmetfiles):
+        if i%50==0:
+            antfinfiles.append(antmetfiles[i])
+    Nfiles = len(antfinfiles)
+    Nfiles2 = len(antmetfiles)
+    xants = np.zeros((Nants*2, Nfiles2))
+    dead_ants = np.zeros((Nants*2, Nfiles2))
+    cross_ants = np.zeros((Nants*2, Nfiles2))
+    badants = []
+    pol2ind = {'n':0, 'e':1}
+    times = []
+
+    for i,file in enumerate(antfinfiles):
+        time = file[54:60]
+        times.append(time)
+
+    for i,file in enumerate(antmetfiles):
+        antmets = hera_qm.ant_metrics.load_antenna_metrics(file)
+        for j in antmets['xants']:
+            xants[2*np.where(ants==j[0])[0]+pol2ind[j[1]], i] = 1
+        badants.extend(map(lambda x: x[0], antmets['xants']))
+        for j in antmets['crossed_ants']:
+            cross_ants[2*np.where(ants==j[0])[0]+pol2ind[j[1]], i] = 1
+        for j in antmets['dead_ants']:
+            dead_ants[2*np.where(ants==j[0])[0]+pol2ind[j[1]], i] = 1
+
+    badants = np.unique(badants)
+    xants[np.where(xants==1)] *= np.nan
+    dead_ants[np.where(dead_ants==0)] *= np.nan
+    cross_ants[np.where(cross_ants==0)] *= np.nan
+
+    antslabels = []
+    for i in ants:
+        labeln = str(i) + 'n'
+        labele = str(i) + 'e'
+        antslabels.append(labeln)
+        antslabels.append(labele)
+
+    fig, ax = plt.subplots(1, figsize=(16,20), dpi=75)
+
+    # plotting
+    ax.matshow(xants, aspect='auto', cmap='RdYlGn_r', vmin=-.3, vmax=1.3,
+           extent=[0, len(times), Nants*2, 0])
+    ax.matshow(dead_ants, aspect='auto', cmap='RdYlGn_r', vmin=-.3, vmax=1.3,
+           extent=[0, len(times), Nants*2, 0])
+    ax.matshow(cross_ants, aspect='auto', cmap='RdBu', vmin=-.3, vmax=1.3,
+           extent=[0, len(times), Nants*2, 0])
+
+    # axes
+    ax.grid(color='k')
+    ax.xaxis.set_ticks_position('bottom')
+    ax.set_xticks(np.arange(len(times))+0.5)
+    ax.set_yticks(np.arange(Nants*2)+0.5)
+    ax.tick_params(size=8)
+
+    if Nfiles > 20:
+        ticklabels = times
+        ax.set_xticklabels(ticklabels)
+    else:
+        ax.set_xticklabels(times)
+
+    ax.set_yticklabels(antslabels)
+
+    [t.set_rotation(30) for t in ax.get_xticklabels()]
+    [t.set_size(12) for t in ax.get_xticklabels()]
+    [t.set_rotation(0) for t in ax.get_yticklabels()]
+    [t.set_size(12) for t in ax.get_yticklabels()]
+
+    ax.set_title("Ant Metrics bad ants over observation", fontsize=14)
+    ax.set_xlabel('decimal of JD = {}'.format(int(jd_start)), fontsize=16)
+    ax.set_ylabel('antenna number and pol', fontsize=16)
+    red_ptch = mpatches.Patch(color='red')
+    grn_ptch = mpatches.Patch(color='green')
+    blu_ptch = mpatches.Patch(color='blue')
+    ax.legend([red_ptch, blu_ptch, grn_ptch], ['dead ant', 'cross ant', 'good ant'], fontsize=14)
