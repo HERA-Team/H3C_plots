@@ -55,11 +55,8 @@ def load_data(data_path,JD):
     uvdfirst = UVData()
     uvdfirst.read(HHfiles[0:1], polarizations=[-5, -6], skip_bad_files=True)
 
-    #last file
-    uvdlast = UVData()
-    uvdlast.read(HHfiles[-1], polarizations=[-5, -6], skip_bad_files=True)
    
-    return HHfiles, difffiles, uvd_xx1, uvd_yy1, uvdfirst, uvdlast
+    return HHfiles, difffiles, uvd_xx1, uvd_yy1, uvdfirst
 
 def plot_autos(uvdx, uvdy, uvd1, uvd2):
     ants = uvdx.get_ants()
