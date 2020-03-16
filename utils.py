@@ -54,7 +54,7 @@ def load_data(data_path,JD):
    
     return HHfiles, difffiles, uvd_xx1, uvd_yy1
 
-def plot_autos(uvdx, uvdy, uvd1, uvd2):
+def plot_autos(uvdx, uvdy):
     ants = uvdx.get_ants()
     freqs = (uvdx.freq_array[0])*10**(-6)
     times = uvdx.time_array
