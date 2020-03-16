@@ -51,12 +51,8 @@ def load_data(data_path,JD):
     uvd_yy1 = uvd_hh.select(polarizations = -6, inplace = False)
     uvd_yy1.ants = np.unique(np.concatenate([uvd_yy1.ant_1_array, uvd_yy1.ant_2_array]))
 
-    #first file 
-    uvdfirst = UVData()
-    uvdfirst.read(HHfiles[0:1], polarizations=[-5, -6], skip_bad_files=True)
-
    
-    return HHfiles, difffiles, uvd_xx1, uvd_yy1, uvdfirst
+    return HHfiles, difffiles, uvd_xx1, uvd_yy1
 
 def plot_autos(uvdx, uvdy, uvd1, uvd2):
     ants = uvdx.get_ants()
