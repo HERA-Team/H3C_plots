@@ -570,6 +570,22 @@ def get_hourly_files(uv, HHfiles, jd):
     return use_files, use_lsts
 
 def get_baseline_groups(uv, bl_groups=[(14,0,'14m E-W'),(29,0,'29m E-W'),(14,-11,'14m NW-SE'),(14,11,'14m SW-NE')]):
+    """
+    Generate dictionary containing baseline groups.
+    
+    Parameters:
+    ----------
+    uv: UVData Object
+        Observation to extract antenna position information from
+    bl_groups: List
+        Desired baseline types to extract, formatted as (length (float), E-W separation (float), label (string))
+        
+    Returns:
+    --------
+    bls: Dict
+        Dictionary containing list of lists of redundant baseline numbers, formatted as bls[group label]
+    """
+    
     bls={}
     baseline_groups,vec_bin_centers,lengths = uv.get_redundancies(use_antpos=True,include_autos=False)
     for i in range(len(baseline_groups)):
