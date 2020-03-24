@@ -393,6 +393,14 @@ def plot_antenna_positions(uv, badAnts=[]):
     plt.title('Antenna Locations')
     
 def plot_lst_coverage(uvd):
+    """
+    Plots the LST coverage for a particular night.
+    
+    Parameters
+    ----------
+    uvd: UVData Object
+        Object containing a whole night of data, used to extract the time array.
+    """
     lsts = uvd.lst_array*3.819719
     fig = plt.figure(figsize=(12,10))
     plt.hist(lsts, bins=int(len(np.unique(lsts))/20), alpha=0.7)
