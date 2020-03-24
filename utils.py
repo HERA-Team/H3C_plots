@@ -531,6 +531,25 @@ def plotCorrMatrix(uv,data,pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logSc
     fig.subplots_adjust(top=1.32,wspace=0.05)
     
 def get_hourly_files(uv, HHfiles, jd):
+    """
+    Generates a list of files spaced one hour apart throughout a night of observation, and the times those files were observed.
+    
+    Parameters:
+    ----------
+    uv: UVData Object
+        Sample observation from the given night, used only for grabbing the telescope location
+    HHFiles: List
+        List of all files from the desired night of observation
+    jd: String
+        JD of the night of observation
+        
+    Returns:
+    -------
+    use_files: List
+        List of files separated by one hour
+    use_lsts: List
+        List of LSTs of observations in use_files
+    """
     use_lsts = []
     use_files = []
     for file in HHfiles:
