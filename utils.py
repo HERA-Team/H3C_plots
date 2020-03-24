@@ -241,7 +241,7 @@ def plotNodeAveragedSummary(uv,HHfiles,jd,pols=['xx','yy'],baseline_groups=[],re
     pols: List
         A list containing the desired polarizations to look at. Options are any polarization strings accepted by pyuvdata. 
     baseline_groups: []
-        A list containing the baseline types to look at, formatted as (<length>, <E-W separation>, <label (str)>).
+        A list containing the baseline types to look at, formatted as (length, N-S separation, label (str)).
     removeBadAnts: Bool
         Option to flag seemingly dead antennas and remove them from the per-baseline-group averaging. 
     
@@ -578,7 +578,7 @@ def get_baseline_groups(uv, bl_groups=[(14,0,'14m E-W'),(29,0,'29m E-W'),(14,-11
     uv: UVData Object
         Observation to extract antenna position information from
     bl_groups: List
-        Desired baseline types to extract, formatted as (length (float), E-W separation (float), label (string))
+        Desired baseline types to extract, formatted as (length (float), N-S separation (float), label (string))
         
     Returns:
     --------
@@ -605,6 +605,37 @@ def get_baseline_groups(uv, bl_groups=[(14,0,'14m E-W'),(29,0,'29m E-W'),(14,-11
     
 def get_correlation_baseline_evolutions(uv,HHfiles,jd,badThresh=0.35,pols=['xx','yy'],bl_type=(14,0,'14m E-W'),
                                         removeBadAnts=False, plotMatrix=True):
+    """
+    Calculates the average correlation metric for a set of redundant baseline groups at one hour intervals throughout a night of observation.
+    
+    Parameters:
+    ----------
+    uv: UVData Object
+        Sample observation from the desired night, used only for getting telescope location information.
+    HHfiles: List
+        List of all files for a night of observation
+    jd: String
+        JD of the given night of observation
+    badThresh: Float
+        Threshold correlation metric value to use for flagging bad antennas. Default is 0.35.
+    pols: List
+        Polarizations to plot. Can include any polarization strings accepted by pyuvdata.
+    bl_type: Tuple
+        Redundant baseline group to calculate correlation metric for. Default is 14m E-W baselines
+    removeBadAnts: Bool
+        Option to exclude antennas marked as bad from calculation. Default is False.
+    plotMatrix: Bool
+        Option to plot the correlation matrix for observations once each hour. Default is True.
+        
+    Returns:
+    -------
+    result: Dict
+        Per hour correlation metric, formatted as result[baseline type]['inter' or 'intra'][polarization]
+    lsts: List
+        LSTs that metric was calculated for, spaced 1 hour apart.
+    bad_antennas: List
+        Antenna numbers flagged as bad based on badThresh parameter.
+    """
     files, lsts = get_hourly_files(uv, HHfiles, jd)
     nTimes = len(files)
     plotTimes = [0,nTimes-1,nTimes//2]
