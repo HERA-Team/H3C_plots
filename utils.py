@@ -389,10 +389,10 @@ def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='
     fig, axs = plt.subplots(1,len(pols),figsize=(16,16))
     dirs = ['NS','EW']
     loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
-    t = Time(uv.time_array[0],format='jd',location=loc)
+    jd = uv.time_array[0]
+    t = Time(jd,format='jd',location=loc)
     lst = round(t.sidereal_time('mean').hour,2)
     t.format='fits'
-    jd = uv.time_array[0]
     antnumsAll = sort_antennas(uv)
     for p in range(len(pols)):
         pol = pols[p]
