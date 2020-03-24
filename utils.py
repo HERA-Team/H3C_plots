@@ -280,7 +280,22 @@ def plotNodeAveragedSummary(uv,HHfiles,jd,pols=['xx','yy'],baseline_groups=[],re
     axs[1][1].set_xlabel('LST (hours)')
     return badAnts
     
-def plotVisibilitySpectra(file,jd,badAnts=[],length=29,pols=['xx','yy'], clipLowAnts=True):
+def plotVisibilitySpectra(file,jd,badAnts=[],pols=['xx','yy']):
+    """
+    Plots visibility amplitude spectra for a set of redundant baselines, labeled by inter vs. intranode baselines.
+    
+    Parameters
+    ---------
+    file: String
+        File to calculate the spectra from
+    jd: String
+        JD of the night 'file' was observed on
+    badAnts: List
+        A list of antennas not to include in the plot
+    pols: List
+        Polarizations to plot. Can include any polarization strings accepted by pyuvdata.
+    """
+    
     fig, axs = plt.subplots(4,2,figsize=(12,16))
     plt.subplots_adjust(wspace=0.25)
     uv = UVData()
@@ -339,6 +354,17 @@ def plotVisibilitySpectra(file,jd,badAnts=[],length=29,pols=['xx','yy'], clipLow
     fig.subplots_adjust(top=.94,wspace=0.05)
     
 def plot_antenna_positions(uv, badAnts=[]):
+    """
+    Plots the positions of all antennas that have data, colored by node.
+    
+    Parameters
+    ----------
+    uv: UVData object
+        Observation to extract antenna numbers and positions from
+    badAnts: List
+        A list of flagged or bad antennas. These will be outlined in black in the plot. 
+    """
+    
     plt.figure(figsize=(12,10))
     nodes, antDict, inclNodes = generate_nodeDict(uv)
     N = len(nodes)
