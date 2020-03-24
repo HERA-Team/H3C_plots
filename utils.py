@@ -552,9 +552,12 @@ def get_hourly_files(uv, HHfiles, jd):
     """
     use_lsts = []
     use_files = []
+    loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
     for file in HHfiles:
-        loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
-        t = Time(float(jd),format='jd',location=loc)
+        dat = UVData()
+        dat.read(file, read_data=False)
+        jd = dat.time_array[0]
+        t = Time(jd,format='jd',location=loc)
         lst = round(t.sidereal_time('mean').hour,2)
         if np.abs((lst-np.round(lst,0)))<0.05:
             if len(use_lsts)>0 and np.abs(use_lsts[-1]-lst)<0.5:
