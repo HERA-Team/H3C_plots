@@ -409,6 +409,29 @@ def plot_lst_coverage(uvd):
     plt.title('LST Coverage')
     
 def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto', badThresh=0.5):
+    """
+    Calculates a matrix of phase correlations between antennas, where each pixel is calculated as (even/abs(even)) * (conj(odd)/abs(odd)), and then averaged across time and frequency.
+    
+    Paramters:
+    ---------
+    sm: UVData Object
+        Sum observation.
+    df: UVData Object
+        Diff observation. Must be the same time of observation as sm. 
+    pols: List
+        Polarizations to plot. Can include any polarization strings accepted by pyuvdata.
+    nodes: String or List
+        Nodes to include in matrix. Default is 'auto', which generates a list of all nodes included in the provided data files. 
+    badThresh: Float
+        Threshold correlation metric value to use for flagging bad antennas.
+    
+    Returns:
+    -------
+    data: Dict
+        Dictionary containing calculated values, formatted as data[polarization][ant1,ant2]. 
+    badAnts: List
+        List of antennas that were flagged as bad based on badThresh.
+    """
     if sm.time_array[0] != df.time_array[0]:
         print('FATAL ERROR: Sum and diff files are not from the same observation!')
         return None
