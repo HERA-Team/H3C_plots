@@ -701,6 +701,22 @@ def get_correlation_baseline_evolutions(uv,HHfiles,jd,badThresh=0.35,pols=['xx',
     return result,lsts,bad_antennas
 
 def generateDataTable(uv,pols=['xx','yy']):
+    """
+    Simple helper function to generate an empty dictionary of the format desired for get_correlation_baseline_evolutions()
+    
+    Parameters:
+    ----------
+    uv: UVData Object
+        Sample observation to extract node and antenna information from.
+    pols: List
+        Polarizations to plot. Can include any polarization strings accepted by pyuvdata. Default is ['xx','yy'].
+        
+    Returns:
+    -------
+    dataObject: Dict
+        Empty dict formatted as dataObject[node #][polarization]['inter' or 'intra']
+    """
+    
     nodeDict, antDict, inclNodes = generate_nodeDict(uv)
     dataObject = {}
     for node in nodeDict:
