@@ -729,6 +729,28 @@ def generateDataTable(uv,pols=['xx','yy']):
     return dataObject
 
 def getInternodeMedians(uv,data,pols=['xx','yy'],badAnts=[],baselines='all'):
+    """
+    Identifies internode baseliens and performs averaging of correlation metric.
+    
+    Parameters:
+    ----------
+    uv: UVData Object
+        Sample observation to extract node and antenna information from.
+    data: Dict
+        Dictionary containing correlation metric information, formatted as data[polarization][ant1,ant2].
+    pols: List
+        Polarizations to plot. Can include any polarization strings accepted by pyuvdata. Default is ['xx','yy'].
+    badAnts: List
+        List of antennas that have been flagged as bad - if provided, they will be excluded from averaging.
+    baselines: List
+        List of baseline types to include in calculation.
+        
+    Returns:
+    -------
+    nodeMeans: Dict
+        Per-node averaged correlation metrics, formatted as nodeMeans[node #][polarization].
+    """
+    
     nodeDict, antDict, inclNodes = generate_nodeDict(uv)
     antnumsAll=sort_antennas(uv)
     nants = len(antnumsAll)
