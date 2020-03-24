@@ -227,13 +227,38 @@ def plot_closure(uvd, triad_length, pol):
                            interpolation='nearest', cmap = 'twilight')
     
 def plotNodeAveragedSummary(uv,HHfiles,jd,pols=['xx','yy'],baseline_groups=[],removeBadAnts=False):
-    baseline_groups = [(14,0,'14m E-W'),(14,-11,'14m NW-SE'),(14,11,'14m SW-NE'),(29,0,'29m E-W'),(29,22,'29m SW-NE'),
-                   (44,0,'44m E-W'),(58.5,0,'58m E-W'),(73,0,'73m E-W'),(87.6,0,'88m E-W'),
-                  (102.3,0,'102m E-W')]
+    """
+    Plots a summary of baseline correlations throughout a night for each baseline group specified, separated into inter-node and intra-node baselines, for each polarization specified.
+    
+    Parameters
+    ----------
+    uv: UVData object
+        UVData object containing any file from the desired night of observation.
+    HHfiles: List
+        A list of all files to be looked at for the desired night of observation.
+    jd: String
+        The JD of the night of observation
+    pols: List
+        A list containing the desired polarizations to look at. Options are any polarization strings accepted by pyuvdata. 
+    baseline_groups: []
+        A list containing the baseline types to look at, formatted as (<length>, <E-W separation>, <label (str)>).
+    removeBadAnts: Bool
+        Option to flag seemingly dead antennas and remove them from the per-baseline-group averaging. 
+    
+    Returns
+    -------
+    badAnts: List
+        A list specifying the antennas flagged as dead or non-correlating.
+    """
+    if baseline_groups == []
+        baseline_groups = [(14,0,'14m E-W'),(14,-11,'14m NW-SE'),(14,11,'14m SW-NE'),(29,0,'29m E-W'),(29,22,'29m SW-NE'),
+                       (44,0,'44m E-W'),(58.5,0,'58m E-W'),(73,0,'73m E-W'),(87.6,0,'88m E-W'),
+                      (102.3,0,'102m E-W')]
     fig,axs = plt.subplots(len(pols),2,figsize=(16,16))
     maxLength = 0
     cmap = plt.get_cmap('Blues')
-    nodeMedians,lsts,badAnts=get_correlation_baseline_evolutions(uv,HHfiles,jd,bl_type=baseline_groups,removeBadAnts=removeBadAnts)
+    nodeMedians,lsts,badAnts=get_correlation_baseline_evolutions(uv,HHfiles,jd,
+                                                                bl_type=baseline_groups,removeBadAnts=removeBadAnts)
     for group in baseline_groups:
         if group[0] > maxLength:
             maxLength = group[0]
