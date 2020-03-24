@@ -902,6 +902,20 @@ def generate_nodeDict(uv):
     return nodes, antDict, inclNodes
 
 def sort_antennas(uv):
+    """
+    Helper function that sorts antennas by snap input number.
+    
+    Parameters:
+    ----------
+    uv: UVData Object
+        Sample observation used for extracting node and antenna information.
+        
+    Returns:
+    -------
+    sortedAntennas: List
+        All antennas with data, sorted into order of ascending node number, and within that by ascending snap number, and within that by ascending snap input number.
+    """
+    
     nodes, antDict, inclNodes = generate_nodeDict(uv)
     sortedAntennas = []
     for n in sorted(inclNodes):
