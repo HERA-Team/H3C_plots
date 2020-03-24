@@ -463,7 +463,27 @@ def calcEvenOddAmpMatrix(sm,df,pols=['xx','yy'],nodes='auto', badThresh=0.5):
     return data, badAnts
 
 
-def plotCorrMatrix(uv,data,freq='All',pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logScale=False):
+def plotCorrMatrix(uv,data,pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logScale=False):
+    """
+    Plots a matrix representing the phase correlation of each baseline.
+    
+    Parameters:
+    ----------
+    uv: UVData Object
+        Observation used for calculating the correlation metric
+    data: Dict
+        Dictionary containing the correlation metric for each baseline and each polarization. Formatted as data[polarization]  [ant1,ant2] 
+    pols: List
+        Polarizations to plot. Can include any polarization strings accepted by pyuvdata.
+    vminIn: float
+        Lower limit of colorbar. Default is 0.
+    vmaxIn: float
+        Upper limit of colorbar. Default is 1.
+    nodes: Dict
+        Dictionary containing the nodes (and their constituent antennas) to include in the matrix. Formatted as nodes[Node #][Ant List, Snap # List, Snap Location List].
+    logScale: Bool
+        Option to put colormap on a logarithmic scale. Default is False.
+    """
     if nodes=='auto':
         nodeDict, antDict, inclNodes = generate_nodeDict(uv)
     nantsTotal = len(uv.antenna_numbers)
