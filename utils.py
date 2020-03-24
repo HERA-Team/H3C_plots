@@ -855,6 +855,24 @@ def get_baseline_type(uv,bl_type=(14,0,'14m E-W')):
     return None
 
 def generate_nodeDict(uv):
+    """
+    Generates dictionaries containing node and antenna information.
+    
+    Parameters:
+    ----------
+    uv: UVData Object
+        Sample observation to extract node and antenna information from.
+    
+    Returns:
+    -------
+    nodes: Dict
+        Dictionary containing entry for all nodes, each of which has keys: 'ants', 'snapLocs', 'snapInput'.
+    antDict: Dict
+        Dictionary containing entry for all antennas, each of which has keys: 'node', 'snapLocs', 'snapInput'.
+    inclNodes: List
+        Nodes that have hooked up antennas.
+    """
+    
     antnums = uv.antenna_numbers
     h = cm_hookup.Hookup()
     x = h.get_hookup('HH')
