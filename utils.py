@@ -827,6 +827,20 @@ def getIntranodeMedians(uv, data, pols=['xx','yy'],badAnts=[],baselines='all'):
     return nodeMeans
 
 def get_baseline_type(uv,bl_type=(14,0,'14m E-W')):
+    """
+    Parameters:
+    ----------
+    uv: UVData Object
+        Sample observation to get baseline information from.
+    bl_type: Tuple
+        Redundant baseline group to extract baseline numbers for. Formatted as (length, N-S separation, label).
+    
+    Returns:
+    -------
+    bl: List
+        List of lists of redundant baseline numbers. Returns None if the provided bl_type is not found.
+    """
+    
     baseline_groups,vec_bin_centers,lengths = uv.get_redundancies(use_antpos=True,include_autos=False)
     for i in range(len(baseline_groups)):
         bl = baseline_groups[i]
