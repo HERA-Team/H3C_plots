@@ -320,9 +320,9 @@ def plotVisibilitySpectra(file,jd,badAnts=[],pols=['xx','yy']):
                 ant1 = ants[0]
                 ant2 = ants[1]
                 key1 = 'HH%i:A' % (ant1)
-                n1 = x[key1].get_part_from_type('node')['E<ground'][2]
+                n1 = x[key1].get_part_from_type('node')['E<ground'][1:]
                 key2 = 'HH%i:A' % (ant2)
-                n2 = x[key2].get_part_from_type('node')['E<ground'][2]
+                n2 = x[key2].get_part_from_type('node')['E<ground'][1:]
                 dat = np.mean(np.abs(uv.get_data(ant1,ant2,pol)),0)
                 auto1 = np.mean(np.abs(uv.get_data(ant1,ant1,pol)),0)
                 auto2 = np.mean(np.abs(uv.get_data(ant2,ant2,pol)),0)
@@ -772,9 +772,9 @@ def getInternodeMedians(uv,data,pols=['xx','yy'],badAnts=[],baselines='all'):
                 if ant1 not in badAnts and ant2 not in badAnts and ant1 != ant2:
                     if baselines=='all' or (ant1,ant2) in baselines:
                         key1 = 'HH%i:A' % (ant1)
-                        n1 = x[key1].get_part_from_type('node')['E<ground'][2]
+                        n1 = x[key1].get_part_from_type('node')['E<ground'][1:]
                         key2 = 'HH%i:A' % (ant2)
-                        n2 = x[key2].get_part_from_type('node')['E<ground'][2]
+                        n2 = x[key2].get_part_from_type('node')['E<ground'][1:]
                         dat = data[pol][i,j]
                         if n1 != n2:
                             nodeCorrs[n1][pol].append(dat)
