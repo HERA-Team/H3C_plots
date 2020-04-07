@@ -554,8 +554,11 @@ def get_hourly_files(uv, HHfiles, jd):
     use_files = []
     loc = EarthLocation.from_geocentric(*uv.telescope_location, unit='m')
     for file in HHfiles:
-        dat = UVData()
-        dat.read(file, read_data=False)
+        try:
+            dat = UVData()
+            dat.read(file, read_data=False)
+        except KeyError:
+            continue
         jd = dat.time_array[0]
         t = Time(jd,format='jd',location=loc)
         lst = round(t.sidereal_time('mean').hour,2)
