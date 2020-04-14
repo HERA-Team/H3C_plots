@@ -516,7 +516,7 @@ def plotCorrMatrix(uv,data,pols=['xx','yy'],vminIn=0,vmaxIn=1,nodes='auto',logSc
             n += len(nodeDict[node]['ants'])
             axs[p].axhline(len(antnumsAll)-n+.5,lw=4)
             axs[p].axvline(n+.5,lw=4)
-            axs[p].text(n-len(nodeDict[node]['ants'])/2,-.4,node)
+            axs[p].text(n-len(nodeDict[node]['ants'])/2,-.35,node)
         axs[p].text(.42,-.07,'Node Number',transform=axs[p].transAxes)
     n=0
     for node in sorted(inclNodes):
