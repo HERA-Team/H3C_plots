@@ -381,8 +381,14 @@ def plot_antenna_positions(uv, badAnts=[]):
             if antNum in badAnts:
                 width=5
             if antNum == ants[0]:
-                plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,label=str(node),
-                        markeredgecolor='black',markeredgewidth=width)
+                if antNum in badAnts:
+                    plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,
+                            markeredgecolor='black',markeredgewidth=width, markerfacecolor="None")
+                    plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,label=str(node),
+                            markeredgecolor='black',markeredgewidth=0)
+                else:
+                    plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,label=str(node),
+                            markeredgecolor='black',markeredgewidth=width)
             else:
                 plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,
                         markeredgecolor='black',markeredgewidth=width)
