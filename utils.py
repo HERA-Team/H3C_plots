@@ -370,7 +370,6 @@ def plot_antenna_positions(uv, badAnts=[]):
     N = len(nodes)
     cmap = plt.get_cmap('tab20')
     n = 0
-    labelled = []
     for node in sorted(inclNodes):
         color = cmap(round(20/N*n))
         n += 1
@@ -384,7 +383,6 @@ def plot_antenna_positions(uv, badAnts=[]):
             if antNum == ants[0]:
                 plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,label=str(node),
                         markeredgecolor='black',markeredgewidth=width)
-                labelled.append(node)
             else:
                 plt.plot(antPos[1],antPos[2],marker="h",markersize=40,color=color,alpha=0.5,
                         markeredgecolor='black',markeredgewidth=width)
